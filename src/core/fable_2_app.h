@@ -337,6 +337,7 @@ class Fable2App : public rex::ReXApp {
       seed_cvar("user_language", std::to_string(version->language));
       REXSYS_INFO("[build-profile] detected {}", version->name);
     }
+    seed_cvar("keyboard_mouse", cfg.keyboard_mouse ? "true" : "false");
     seed_cvar("keyboard_gamepad_map", cfg.keyboard_gamepad_map);
     seed_cvar("mouse_look", cfg.mouse_look ? "true" : "false");
     seed_cvar("mouse_look_scale", std::to_string(cfg.mouse_look_scale));

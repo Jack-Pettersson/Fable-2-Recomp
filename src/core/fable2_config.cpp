@@ -56,12 +56,18 @@ R"TOML_EOF(# ===================================================================
 config_version = 1
 
 [input]
+# Keyboard and mouse support. A controller works either way. false ignores the
+# keyboard map and mouse look and leaves the cursor free.
+# Default: true
+keyboard_mouse = true
+
 # Host keyboard/mouse -> guest gamepad map: "Key:Button,Key:Button,..." (one
 # line; do not add spaces or newlines inside the string). Key = Windows
 # virtual-key name (see README.md, Keyboard controls) or a mouse button
 # (LMB/RMB/MMB, or XMB1/XMB2 for the side buttons); Button = A/B/X/Y, LB/RB,
-# LT/RT, Up/Down/Left/Right, Pause, Select, L3/R3, StickUp/StickDown/
-# StickLeft/StickRight. Empty string disables the keyboard gamepad.
+# LT/RT, Up/Down/Left/Right, Pause, Select, L3/R3, MoveForward/MoveBack/
+# MoveLeft/MoveRight (also spelled StickUp/StickDown/StickLeft/StickRight).
+# Empty string disables the keyboard gamepad.
 # --keyboard_gamepad_map, REX_* environment variables and fable_2.toml still
 # take priority over this value; the F3 console can change it live.
 # Default: the built-in layout
@@ -325,6 +331,9 @@ bool Load(const std::filesystem::path& path) {
   const auto input = root[input_path];
   if (input.is_table()) {
     const toml::table& input_table = *input.as_table();
+    values.keyboard_mouse =
+        Read<bool>(input_table, "input", "keyboard_mouse", "boolean",
+                   values.keyboard_mouse);
     values.keyboard_gamepad_map = Read<std::string>(
         input_table, "input", "keyboard_gamepad_map", "string",
         std::string{kDefaultKeyboardGamepadMap});

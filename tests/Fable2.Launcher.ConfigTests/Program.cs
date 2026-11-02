@@ -300,9 +300,9 @@ try
     var advanced = new Fable2ConfigValues
     {
         KeyboardGamepadMap = "LMB:X,RMB:Y,Shift:A,E:A",
+        KeyboardMouse = false,
         MouseLook = true,
         MouseLookScale = 512,
-        DirectMouseLook = true,
         UnlockWebsite = true,
         UnlockCe = false,
         SkipIntroVideos = true,
@@ -319,7 +319,8 @@ try
     var readBack = Fable2ConfigFile.Read(advPath);
     Require(readBack.MouseLook, "mouse look roundtrip failed");
     Require(readBack.MouseLookScale == 512, "mouse scale roundtrip failed");
-    Require(readBack.DirectMouseLook, "direct mouse look roundtrip failed");
+    Require(!readBack.KeyboardMouse, "keyboard_mouse roundtrip failed");
+    Require(new Fable2ConfigValues().KeyboardMouse, "keyboard_mouse must default to on");
     Require(!readBack.UnlockCe, "unlock_ce roundtrip failed");
     Require(readBack.SkipIntroVideos, "skip_intro_videos roundtrip failed");
     Require(readBack.DisableMotionBlur, "disable_motion_blur roundtrip failed");

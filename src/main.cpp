@@ -23,6 +23,14 @@
 
 #include <rex/cvar.h>
 
+// Keyboard and mouse support (see src/input/keyboard_gamepad.h).
+// The default is a fallback, seeded from fable2_config.toml [input] at startup.
+REXCVAR_DEFINE_BOOL(keyboard_mouse, true, "Input",
+                    "Enable keyboard and mouse support. When false the keyboard "
+                    "map and mouse look are ignored and the cursor stays free. "
+                    "Default comes from fable2_config.toml [input] "
+                    "keyboard_mouse.");
+
 // Host keyboard -> guest gamepad map (see src/input/keyboard_gamepad.h).
 // Format: "Key:Button,Key:Button,...".
 // The default layout is NOT baked in here: it lives in the config layer

@@ -646,8 +646,8 @@ public partial class MainWindow : Window
         _loading = true;
         try
         {
+            KeyboardMouseCheck.IsChecked = _advanced.KeyboardMouse;
             MouseLookCheck.IsChecked = _advanced.MouseLook;
-            DirectMouseLookCheck.IsChecked = _advanced.DirectMouseLook;
             MouseSensitivitySlider.Value = _advanced.MouseLookScale;
             MouseSensitivityBox.Text = _advanced.MouseLookScale.ToString(CultureInfo.InvariantCulture);
             HotFuncYieldSlider.Value = Math.Clamp(_advanced.HotFuncYieldEvery, 0, 16);
@@ -1064,8 +1064,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        _advanced.KeyboardMouse = KeyboardMouseCheck.IsChecked == true;
         _advanced.MouseLook = MouseLookCheck.IsChecked == true;
-        _advanced.DirectMouseLook = DirectMouseLookCheck.IsChecked == true;
         _advanced.MouseLookScale = (int)MouseSensitivitySlider.Value;
         _advanced.HotFuncYieldEvery = int.TryParse(HotFuncYieldBox.Text, NumberStyles.Integer,
             CultureInfo.InvariantCulture, out int yieldEvery)

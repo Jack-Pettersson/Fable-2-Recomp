@@ -36,6 +36,8 @@ struct Values {
   // [general]
   int32_t config_version = 1;
   // [input]
+  // Keyboard and mouse support. Keep in sync with the cvar default in main.cpp.
+  bool keyboard_mouse = true;
   std::string keyboard_gamepad_map{std::string{kDefaultKeyboardGamepadMap}};
   // Keep in sync with the cvar defaults in main.cpp (mouse_look,
   // mouse_look_scale); the cvar keeps its compiled default as a fallback so

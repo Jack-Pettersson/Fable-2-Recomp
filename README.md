@@ -125,7 +125,7 @@ game recreates it with defaults on launch if it is ever missing. Loaded in
   **and** the embedded template in `src/core/fable2_config.cpp` (keep both in
   sync).
 - Settings that back an SDK cvar (currently the `[input]` section:
-  `keyboard_gamepad_map`, `mouse_look`, `mouse_look_scale`) are seeded into
+  `keyboard_mouse`, `keyboard_gamepad_map`, `mouse_look`, `mouse_look_scale`) are seeded into
   the cvar at startup — but only when no higher-priority
   source set it: `fable_2.toml` (cvar config), `REX_*` env vars, and the
   command line (e.g. `--keyboard_gamepad_map`) still win, and the F3 console
@@ -149,6 +149,11 @@ top of (OR-merged with) whatever a real gamepad reports. The physical pad
 keeps working; the keyboard just adds buttons. It is wired up in
 `Fable2App::OnPreSetup` via `config.input_factory`.
 
+Keyboard and mouse support is on by default, and a controller works alongside
+it. Turn it off with **Keyboard and mouse support** on the launcher's Advanced
+Options page, or `[input] keyboard_mouse = false` in `fable2_config.toml`, to
+ignore the keyboard map and mouse look and keep the cursor free.
+
 The mapping is the `keyboard_gamepad_map` cvar, format `Key:Button,Key:Button,...`. Its default is no longer hardcoded in the binary: it comes from `[input] keyboard_gamepad_map` in `fable2_config.toml` (see User config above), which you can edit to remap permanently. The command line and the F3 console still override it per-launch / live.
 
 - **Key** — a host key name understood by `rex::ui::ParseVirtualKey`
@@ -158,8 +163,11 @@ The mapping is the `keyboard_gamepad_map` cvar, format `Key:Button,Key:Button,..
   a held key.
 - **Button** — a guest gamepad input: `A`, `B`, `X`, `Y`, `LB`/`RB` (shoulders),
   `LT`/`RT` (triggers), `Up`/`Down`/`Left`/`Right` (dpad), `Pause` (Start),
-  `Select` (Back), `L3`/`R3` (thumb clicks), and `StickUp`/`StickDown`/
-  `StickLeft`/`StickRight` (left thumbstick, full deflection while held).
+  `Select` (Back), and `L3`/`R3` (thumb clicks).
+- **Action** - something the player does, which can be bound in place of a
+  button: `MoveForward`, `MoveBack`, `MoveLeft` and `MoveRight` (also spelled
+  `StickUp`/`StickDown`/`StickLeft`/`StickRight`) move at full speed while held,
+  including on diagonals.
 
 The default layout (mouse buttons plus keyboard) is:
 

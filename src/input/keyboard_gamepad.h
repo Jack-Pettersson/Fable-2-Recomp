@@ -19,24 +19,26 @@
 // buttons; mouse names are also accepted case-insensitively, see
 // input_detail::ParseKey). Mouse-button state is polled with
 // GetAsyncKeyState, the same path as keyboard keys. Button is a guest gamepad
-// button name (A/B/X/Y/LB/RB/LT/RT/Up/Down/Left/Right/Start/Back/L3/R3/
-// StickUp/StickDown/StickLeft/StickRight).
+// button name (A/B/X/Y/LB/RB/LT/RT/Up/Down/Left/Right/Start/Back/L3/R3) or an
+// action name (MoveForward/MoveBack/MoveLeft/MoveRight, also spelled StickUp/
+// StickDown/StickLeft/StickRight); see input_actions.h.
 // The cvar's default is seeded from fable2_config.toml [input] at startup
 // (src/core/fable2_config.{h,cpp} + Fable2App::OnPostInitLogging), so remapping
 // can be done in the config file without a rebuild or CLI arg.
 //
 // The mouse is mapped to the right stick (camera look) via the `mouse_look`
 // and `mouse_look_scale` cvars (defaults seeded from fable2_config.toml
-// [input] at startup, same as the keyboard map above). The cursor is recentered to the window center
-// every poll and that frame's movement is consumed, so the camera rotates
-// continuously and the cursor never wanders or hits the screen edge.
+// [input] at startup, same as the keyboard map above); see mouse_camera.h.
+//
+// The `keyboard_mouse` cvar turns keyboard and mouse support on or off. When off
+// the device stays connected but reports a neutral pad and leaves the cursor
+// alone. A physical controller works either way, and F5 and the debug-menu key
+// are still handled.
 
 #pragma once
 
-#include <cctype>
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <rex/cvar.h>
@@ -44,10 +46,11 @@
 #include <rex/input/input_driver.h>
 #include <rex/input/input_system.h>
 #include <rex/runtime.h>
-#include <rex/ui/virtual_key.h>
 #include <rex/ui/keybinds.h>
 
 #include "fable2_config.h"  // direct_mouse_look toggle
+#include "input_actions.h"  // bindings and actions
+#include "mouse_camera.h"   // mouse -> right stick
 #include "mouse_look.h"     // fable2::mouselook (accumulates the mouse delta)
 
 #ifdef _WIN32
@@ -55,6 +58,7 @@
 #endif
 
 // Declared here, defined in main.cpp (REXCVAR_DEFINE_* must live in a .cpp).
+REXCVAR_DECLARE(bool, keyboard_mouse);
 REXCVAR_DECLARE(std::string, keyboard_gamepad_map);
 REXCVAR_DECLARE(bool, mouse_look);
 REXCVAR_DECLARE(int32_t, mouse_look_scale);
@@ -75,149 +79,6 @@ using rex::input::X_INPUT_VIBRATION;
 using rex::input::XINPUT_DEVTYPE_GAMEPAD;
 using rex::input::X_INPUT_CAPS_FFB_SUPPORTED;
 
-namespace input_detail {
-
-// Full thumbstick deflection (XInput range is -32768..32767).
-constexpr int32_t kStickMax = 32767;
-
-inline int32_t ClampStick(int32_t v) {
-  if (v > kStickMax) return kStickMax;
-  if (v < -kStickMax) return -kStickMax;
-  return v;
-}
-
-// One host-key -> guest-input binding. Exactly one of button/trigger/axis
-// is set.
-struct Mapping {
-  uint16_t vk = 0;       // host virtual-key code (0 == invalid)
-  uint16_t button = 0;   // guest X_INPUT_GAMEPAD_* button mask
-  char trigger = 0;      // 0 = not a trigger, 'L' = left, 'R' = right
-  int8_t axis = 0;       // 0 = not an axis, 1 = left-stick X, 2 = left-stick Y
-  int8_t axis_sign = 0;  // +1 / -1 deflection direction for the axis
-  bool valid() const { return button != 0 || trigger != 0 || axis != 0; }
-};
-
-// Case-insensitive guest-input name -> mapping fragment. Recognizes buttons,
-// triggers, and left-stick axis names. Unknown names reset the fragment to
-// invalid.
-inline void FillGuestTarget(Mapping& m, std::string_view name) {
-  auto upper = [](char c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); };
-  std::string_view n = name;
-  while (!n.empty() && (n.front() == ' ' || n.front() == '\t')) n.remove_prefix(1);
-  while (!n.empty() && (n.back() == ' ' || n.back() == '\t')) n.remove_suffix(1);
-  std::string u;
-  u.reserve(n.size());
-  for (char c : n) u.push_back(upper(c));
-
-  using B = rex::input::X_INPUT_GAMEPAD_BUTTON;
-  if (u == "A") {
-    m.button = B::X_INPUT_GAMEPAD_A;
-  } else if (u == "B") {
-    m.button = B::X_INPUT_GAMEPAD_B;
-  } else if (u == "X") {
-    m.button = B::X_INPUT_GAMEPAD_X;
-  } else if (u == "Y") {
-    m.button = B::X_INPUT_GAMEPAD_Y;
-  } else if (u == "LB" || u == "LSHOULDER") {
-    m.button = B::X_INPUT_GAMEPAD_LEFT_SHOULDER;
-  } else if (u == "RB" || u == "RSHOULDER") {
-    m.button = B::X_INPUT_GAMEPAD_RIGHT_SHOULDER;
-  } else if (u == "UP" || u == "DUP") {
-    m.button = B::X_INPUT_GAMEPAD_DPAD_UP;
-  } else if (u == "DOWN" || u == "DDOWN") {
-    m.button = B::X_INPUT_GAMEPAD_DPAD_DOWN;
-  } else if (u == "LEFT" || u == "DLEFT") {
-    m.button = B::X_INPUT_GAMEPAD_DPAD_LEFT;
-  } else if (u == "RIGHT" || u == "DRIGHT") {
-    m.button = B::X_INPUT_GAMEPAD_DPAD_RIGHT;
-  } else if (u == "START" || u == "PAUSE") {
-    m.button = B::X_INPUT_GAMEPAD_START;
-  } else if (u == "BACK" || u == "VIEW" || u == "SELECT") {
-    m.button = B::X_INPUT_GAMEPAD_BACK;
-  } else if (u == "L3" || u == "LTHUMB") {
-    m.button = B::X_INPUT_GAMEPAD_LEFT_THUMB;
-  } else if (u == "R3" || u == "RTHUMB") {
-    m.button = B::X_INPUT_GAMEPAD_RIGHT_THUMB;
-  } else if (u == "LT" || u == "LTRIGGER") {
-    m.trigger = 'L';
-  } else if (u == "RT" || u == "RTRIGGER") {
-    m.trigger = 'R';
-  // Left stick axes. lx negative = left (standard). Fable 2 reads ly positive
-  // as forward/up (opposite of the standard XInput "ly negative = up"), so the
-  // Y signs are flipped to match the game's expectation.
-  } else if (u == "STICKUP" || u == "LU") {
-    m.axis = 2; m.axis_sign = 1;
-  } else if (u == "STICKDOWN" || u == "LD") {
-    m.axis = 2; m.axis_sign = -1;
-  } else if (u == "STICKLEFT" || u == "LL") {
-    m.axis = 1; m.axis_sign = -1;
-  } else if (u == "STICKRIGHT" || u == "LR") {
-    m.axis = 1; m.axis_sign = 1;
-  } else {
-    m = Mapping{};  // unknown -> invalid
-  }
-}
-
-// Case-insensitive upper helper (shared by the name parsers below).
-inline std::string ToUpper(std::string_view s) {
-  std::string u;
-  u.reserve(s.size());
-  for (char c : s) u.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
-  return u;
-}
-
-// Host key-name -> VirtualKey. The SDK table (rex::ui::ParseVirtualKey) is
-// authoritative and already recognizes LMB/RMB/MMB; this fallback additionally
-// accepts mouse-button names case-insensitively ("lmb") and covers the side
-// buttons the SDK table does not spell out (VK_XBUTTON1/2). Returns kNone when
-// the name is not a known key.
-inline rex::ui::VirtualKey ParseKey(std::string_view name) {
-  // Tolerate stray spaces/tabs around the name ("LMB", " LMB ").
-  while (!name.empty() && (name.front() == ' ' || name.front() == '\t')) name.remove_prefix(1);
-  while (!name.empty() && (name.back() == ' ' || name.back() == '\t')) name.remove_suffix(1);
-  auto vk = rex::ui::ParseVirtualKey(name);
-  if (vk != rex::ui::VirtualKey::kNone) return vk;
-  using V = rex::ui::VirtualKey;
-  std::string u = ToUpper(name);
-  if (u == "LMB" || u == "LEFTMOUSE") return V::kLButton;   // VK_LBUTTON
-  if (u == "RMB" || u == "RIGHTMOUSE") return V::kRButton;  // VK_RBUTTON
-  if (u == "MMB" || u == "MIDDLEMOUSE") return V::kMButton;  // VK_MBUTTON
-  if (u == "XMB1" || u == "XBUTTON1" || u == "SIDEBUTTON1")
-    return V::kXButton1;  // mouse side button 1
-  if (u == "XMB2" || u == "XBUTTON2" || u == "SIDEBUTTON2")
-    return V::kXButton2;  // mouse side button 2
-  return V::kNone;
-}
-
-// Parse "Key:Button,Key:Button,...". Entries whose key or target name does not
-// parse are skipped. Returns an empty vector on empty input.
-inline std::vector<Mapping> ParseMap(std::string_view text) {
-  std::vector<Mapping> out;
-  size_t start = 0;
-  while (start <= text.size()) {
-    size_t comma = text.find(',', start);
-    std::string_view entry =
-        text.substr(start, comma == std::string_view::npos ? std::string_view::npos : comma - start);
-    if (!entry.empty()) {
-      size_t colon = entry.find(':');
-      if (colon != std::string_view::npos) {
-        auto vk = ParseKey(entry.substr(0, colon));
-        if (vk != rex::ui::VirtualKey::kNone) {
-          Mapping m;
-          m.vk = static_cast<uint16_t>(vk);
-          FillGuestTarget(m, entry.substr(colon + 1));
-          if (m.valid()) out.push_back(m);
-        }
-      }
-    }
-    if (comma == std::string_view::npos) break;
-    start = comma + 1;
-  }
-  return out;
-}
-
-}  // namespace input_detail
-
 /// Synthetic device that exposes held host keys as guest gamepad buttons.
 class KeyboardGamepadDriver final : public rex::input::InputDriver {
  public:
@@ -225,13 +86,7 @@ class KeyboardGamepadDriver final : public rex::input::InputDriver {
   KeyboardGamepadDriver(rex::ui::Window* window, size_t window_z_order)
       : rex::input::InputDriver(window, window_z_order) {}
 
-  ~KeyboardGamepadDriver() override {
-    if (cursor_hidden_) {
-      if (rex::ui::Window* w = GameWindow())
-        w->SetCursorVisibility(rex::ui::Window::CursorVisibility::kVisible);
-      cursor_hidden_ = false;
-    }
-  }
+  ~KeyboardGamepadDriver() override { mouse_camera_.ReleaseCursor(GameWindow()); }
 
   X_STATUS Setup() override { return X_STATUS_SUCCESS; }
 
@@ -250,13 +105,8 @@ class KeyboardGamepadDriver final : public rex::input::InputDriver {
     if (id != kDeviceId) return X_ERROR_DEVICE_NOT_CONNECTED;
     RefreshBindings();
 
-    uint16_t buttons = 0;
-    uint8_t left_trigger = 0;
-    uint8_t right_trigger = 0;
-    int32_t lx = 0;
-    int32_t ly = 0;
-    int32_t rx = 0;
-    int32_t ry = 0;
+    input_detail::PadOutput pad;
+    input_detail::StickXY look;
 #ifdef _WIN32
     rex::ui::Window* win = GameWindow();
     HWND hwnd = win ? reinterpret_cast<HWND>(win->GetNativeWindowHandle()) : nullptr;
@@ -284,96 +134,29 @@ class KeyboardGamepadDriver final : public rex::input::InputDriver {
       unlock_down_prev_ = unlock_down;
     }
 
-    if (focused) {
-      for (const auto& m : bindings_) {
-        if (has_unlock_key && m.vk == unlock_vk) continue;  // not gamepad input
-        if ((GetAsyncKeyState(m.vk) & 0x8000) == 0) continue;  // not held
-        if (m.button != 0) {
-          buttons |= m.button;
-        } else if (m.trigger == 'L') {
-          left_trigger = 0xFF;
-        } else if (m.trigger == 'R') {
-          right_trigger = 0xFF;
-        } else if (m.axis == 1) {
-          lx += m.axis_sign * input_detail::kStickMax;
-        } else if (m.axis == 2) {
-          ly += m.axis_sign * input_detail::kStickMax;
-        }
-      }
-    }
-    // Clamp (opposing keys cancel; two same-direction keys can't exceed it).
-    lx = input_detail::ClampStick(lx);
-    ly = input_detail::ClampStick(ly);
-
-    // Mouse -> right stick (camera look) with cursor recentering + hiding:
-    // the cursor is pinned to the window center each poll (that frame's
-    // movement is consumed, so the camera rotates continuously and never hits
-    // the screen edge). We gate on the game window being focused (so alt-tabbing
-    // away releases the lock) and on the debug menu being closed (F4) so the
-    // cursor is free while the menu is open. Fable 2 inverts Y, so mouse-up
-    // (dy<0) maps to +ry (look up).
-    bool looking = focused && REXCVAR_GET(mouse_look) && !console_open_;
-
-    // Hide/restore the cursor via the SDK Window. This is a thread-safe
-    // "desired state" that the UI thread applies, so it actually takes effect
-    // (raw ShowCursor from this guest thread was overwritten by the SDK's own
-    // cursor management).
-    if (looking && !cursor_hidden_) {
-      win->SetCursorVisibility(rex::ui::Window::CursorVisibility::kHidden);
-      cursor_hidden_ = true;
-    } else if (!looking && cursor_hidden_ && win) {
-      win->SetCursorVisibility(rex::ui::Window::CursorVisibility::kVisible);
-      cursor_hidden_ = false;
+    const bool enabled = REXCVAR_GET(keyboard_mouse);
+    if (focused && enabled) {
+      pad = input_detail::ResolveBindings(bindings_, [&](uint16_t vk) {
+        if (has_unlock_key && vk == unlock_vk) return false;  // not gamepad input
+        return (GetAsyncKeyState(vk) & 0x8000) != 0;
+      });
     }
 
-    if (looking) {
-      RECT rc;
-      POINT p;
-      POINT c;
-      if (GetClientRect(hwnd, &rc) && GetCursorPos(&p)) {
-        c.x = rc.left + rc.right / 2;
-        c.y = rc.top + rc.bottom / 2;
-        if (ClientToScreen(hwnd, &c)) {
-          if (mouse_centered_) {
-            // This poll's cursor displacement in screen pixels. dx>0 = right,
-            // dy>0 = down.
-            const int32_t dx = p.x - c.x;
-            const int32_t dy = p.y - c.y;
-            // Direct-mouse-look separation DISABLED: the mouse always drives
-            // the synthetic pad's right stick (the native path) so the game's
-            // own stick pipeline produces the look 1:1 with a real right stick.
-            // The raw-displacement path that fed fable2_hook_direct_mouse_look
-            // is commented out below (preserved for reference).
-            // if (fable2::config::Get().direct_mouse_look) {
-            //   // Direct mouse look: hand the raw displacement to the camera
-            //   // hook (fable2_hook_direct_mouse_look) and leave the pad's right
-            //   // stick neutral, so the mouse no longer drives the joystick.
-            //   fable2::mouselook::add_delta(dx, dy);
-            // } else {
-              // Map the displacement onto the right stick. Fable 2
-              // inverts Y, so mouse-up (dy<0) maps to +ry (look up).
-              const int32_t scale = REXCVAR_GET(mouse_look_scale);
-              rx = input_detail::ClampStick(dx * scale);
-              ry = input_detail::ClampStick(-dy * scale);
-            // }
-          }
-          SetCursorPos(c.x, c.y);  // recenter: consume this frame's movement
-          mouse_centered_ = true;
-        }
-      }
-    } else {
-      mouse_centered_ = false;  // re-prime on (re)focus to avoid a jump
-    }
+    // Gated on the game window being focused (so alt-tabbing away releases the
+    // lock) and on the debug menu being closed (F4) so the cursor is free while
+    // the menu is open.
+    const bool looking = focused && enabled && REXCVAR_GET(mouse_look) && !console_open_;
+    look = mouse_camera_.Poll(win, looking, REXCVAR_GET(mouse_look_scale));
 #endif
 
     out_state->packet_number.set(packet_number_++);
-    out_state->gamepad.buttons.set(buttons);
-    out_state->gamepad.left_trigger = left_trigger;
-    out_state->gamepad.right_trigger = right_trigger;
-    out_state->gamepad.thumb_lx.set(static_cast<int16_t>(lx));
-    out_state->gamepad.thumb_ly.set(static_cast<int16_t>(ly));
-    out_state->gamepad.thumb_rx.set(static_cast<int16_t>(rx));
-    out_state->gamepad.thumb_ry.set(static_cast<int16_t>(ry));
+    out_state->gamepad.buttons.set(pad.buttons);
+    out_state->gamepad.left_trigger = pad.left_trigger;
+    out_state->gamepad.right_trigger = pad.right_trigger;
+    out_state->gamepad.thumb_lx.set(static_cast<int16_t>(pad.lx));
+    out_state->gamepad.thumb_ly.set(static_cast<int16_t>(pad.ly));
+    out_state->gamepad.thumb_rx.set(static_cast<int16_t>(look.x));
+    out_state->gamepad.thumb_ry.set(static_cast<int16_t>(look.y));
     return X_ERROR_SUCCESS;
   }
 
@@ -419,8 +202,7 @@ class KeyboardGamepadDriver final : public rex::input::InputDriver {
   std::vector<input_detail::Mapping> bindings_;
   std::string cached_text_;
   uint32_t packet_number_ = 0;
-  bool mouse_centered_ = false;  // set once the cursor is first pinned
-  bool cursor_hidden_ = false;   // set while the SDK window cursor is hidden
+  MouseCamera mouse_camera_;
   bool console_open_ = false;    // debug menu open -> mouse lock released
   bool unlock_down_prev_ = false;  // prev-poll state of the unlock key
   // The game window (from the runtime's display window), used for recentering

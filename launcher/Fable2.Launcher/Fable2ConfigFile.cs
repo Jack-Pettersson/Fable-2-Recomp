@@ -21,12 +21,10 @@ public class Fable2ConfigValues
         "Up:Up,Down:Down,Left:Left,Right:Right";
 
     // [input]
+    public bool KeyboardMouse { get; set; } = true;
     public string KeyboardGamepadMap { get; set; } = DefaultKeyboardGamepadMap;
     public bool MouseLook { get; set; } = true;
     public int MouseLookScale { get; set; } = 256;  // range 1..4096 (cvar constraint)
-    // Experimental: drive the camera directly (desktop-FPS orbit) instead of the
-    // legacy right-stick mapping. Only applies when MouseLook is on.
-    public bool DirectMouseLook { get; set; } = false;  // experimental
 
     // [patches]
     public bool UnlockWebsite { get; set; } = true;
@@ -58,7 +56,7 @@ public static class Fable2ConfigFile
 {
     // Host key names understood by rex::ui::ParseVirtualKey (see
     // src/ui/keybinds.cpp) plus the mouse-button aliases from
-    // src/input/keyboard_gamepad.h. Used to populate the key dropdowns.
+    // src/input/input_actions.h. Used to populate the key dropdowns.
     public static readonly string[] KeyNames =
     {
         "A","B","C","D","E","F","G","H","I","J","K","L","M",
@@ -78,12 +76,13 @@ public static class Fable2ConfigFile
     };
 
     // Guest-input names understood by FillGuestTarget (see
-    // src/input/keyboard_gamepad.h). The canonical names are used when writing.
+    // src/input/input_actions.h). The canonical names are used when writing.
     public static readonly string[] ButtonNames =
     {
         "A","B","X","Y","LB","RB","LT","RT",
         "Up","Down","Left","Right","Pause","Select","L3","R3",
         "StickUp","StickDown","StickLeft","StickRight",
+        "MoveForward","MoveBack","MoveLeft","MoveRight",
     };
 
     /// <summary>Read the fable2_config.toml values. Missing file -> built-in defaults.</summary>
@@ -112,10 +111,10 @@ public static class Fable2ConfigFile
             switch (section)
             {
                 case "input":
-                    if (key == "keyboard_gamepad_map") values.KeyboardGamepadMap = Unquote(rawValue);
+                    if (key == "keyboard_mouse") values.KeyboardMouse = ParseBool(rawValue, values.KeyboardMouse);
+                    else if (key == "keyboard_gamepad_map") values.KeyboardGamepadMap = Unquote(rawValue);
                     else if (key == "mouse_look") values.MouseLook = ParseBool(rawValue, values.MouseLook);
                     else if (key == "mouse_look_scale") values.MouseLookScale = ParseInt(rawValue, values.MouseLookScale);
-                    else if (key == "direct_mouse_look") values.DirectMouseLook = ParseBool(rawValue, values.DirectMouseLook);
                     break;
                 case "patches":
                     if (key == "unlock_website") values.UnlockWebsite = ParseBool(rawValue, values.UnlockWebsite);
@@ -159,10 +158,10 @@ public static class Fable2ConfigFile
         {
             // config_version is the format marker the game requires to load the file.
             ("general", "config_version", "1"),
+            ("input", "keyboard_mouse", values.KeyboardMouse ? "true" : "false"),
             ("input", "keyboard_gamepad_map", Quote(values.KeyboardGamepadMap)),
             ("input", "mouse_look", values.MouseLook ? "true" : "false"),
             ("input", "mouse_look_scale", values.MouseLookScale.ToString(CultureInfo.InvariantCulture)),
-            ("input", "direct_mouse_look", values.DirectMouseLook ? "true" : "false"),
             ("patches", "unlock_website", values.UnlockWebsite ? "true" : "false"),
             ("patches", "unlock_ce", values.UnlockCe ? "true" : "false"),
             ("patches", "skip_intro_videos", values.SkipIntroVideos ? "true" : "false"),
