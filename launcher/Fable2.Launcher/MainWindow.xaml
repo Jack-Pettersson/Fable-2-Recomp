@@ -8,6 +8,7 @@
         Foreground="{StaticResource TextBrush}"
         Background="#FF091012">
   <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     <Style x:Key="SectionTitle" TargetType="TextBlock">
       <Setter Property="FontSize" Value="18" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -249,21 +250,24 @@
                            TextWrapping="Wrap" />
                 <CheckBox x:Name="KeyboardMouseCheck" IsChecked="True" Margin="0,10,0,16"
                           Foreground="{StaticResource TextBrush}" />
-                <TextBlock Text="HOST KEY  →  GUEST INPUT" Style="{StaticResource FieldLabel}" />
-                <StackPanel x:Name="KeybindList" />
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Content="+ Add binding" Click="AddKeybindClicked"
-                          Style="{StaticResource SecondaryButton}" MinWidth="120" />
-                  <Button Content="Reset to defaults" Click="ResetKeybindsClicked"
-                          Style="{StaticResource SecondaryButton}" MinWidth="150" Margin="8,0,0,0" />
+                <StackPanel Visibility="{Binding IsChecked, ElementName=KeyboardMouseCheck, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Text="HOST KEY  →  GUEST INPUT" Style="{StaticResource FieldLabel}" />
+                  <StackPanel x:Name="KeybindList" />
+                  <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Content="+ Add binding" Click="AddKeybindClicked"
+                            Style="{StaticResource SecondaryButton}" MinWidth="120" />
+                    <Button Content="Reset to defaults" Click="ResetKeybindsClicked"
+                            Style="{StaticResource SecondaryButton}" MinWidth="150" Margin="8,0,0,0" />
+                  </StackPanel>
+                  <TextBlock Text="Click a host-key box, then press the key or mouse button you want to bind (Esc cancels). Changes are saved to fable2_config.toml and take effect the next time the game is launched."
+                             FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,12,0,0"
+                             TextWrapping="Wrap" />
                 </StackPanel>
-                <TextBlock Text="Click a host-key box, then press the key or mouse button you want to bind (Esc cancels). Changes are saved to fable2_config.toml and take effect the next time the game is launched."
-                           FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,12,0,0"
-                           TextWrapping="Wrap" />
               </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Panel}" Margin="0,18,0,0">
+            <Border Style="{StaticResource Panel}" Margin="0,18,0,0"
+                    Visibility="{Binding IsChecked, ElementName=KeyboardMouseCheck, Converter={StaticResource BoolToVisibility}}">
               <StackPanel>
                 <TextBlock Text="Mouse" Style="{StaticResource SectionTitle}" />
                 <TextBlock Text="Mouse look (camera)" FontWeight="SemiBold" />
