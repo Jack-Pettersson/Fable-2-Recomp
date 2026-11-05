@@ -667,6 +667,7 @@ public partial class MainWindow : Window
         try
         {
             MouseLookCheck.IsChecked = _advanced.MouseLook;
+            KeyboardButtonPromptsCheck.IsChecked = _advanced.KeyboardButtonPrompts;
             DirectMouseLookCheck.IsChecked = _advanced.DirectMouseLook;
             MouseSensitivitySlider.Value = _advanced.MouseLookScale;
             MouseSensitivityBox.Text = _advanced.MouseLookScale.ToString(CultureInfo.InvariantCulture);
@@ -1085,6 +1086,7 @@ public partial class MainWindow : Window
         }
 
         _advanced.MouseLook = MouseLookCheck.IsChecked == true;
+        _advanced.KeyboardButtonPrompts = KeyboardButtonPromptsCheck.IsChecked == true;
         _advanced.DirectMouseLook = DirectMouseLookCheck.IsChecked == true;
         _advanced.MouseLookScale = (int)MouseSensitivitySlider.Value;
         _advanced.HotFuncYieldEvery = int.TryParse(HotFuncYieldBox.Text, NumberStyles.Integer,

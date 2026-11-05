@@ -324,6 +324,7 @@ try
     {
         KeyboardGamepadMap = "LMB:X,RMB:Y,Shift:A,E:A",
         MouseLook = true,
+        KeyboardButtonPrompts = true,
         MouseLookScale = 512,
         DirectMouseLook = true,
         UnlockWebsite = true,
@@ -341,6 +342,7 @@ try
     Require(writtenAdv.Contains("config_version = 1"), "config_version was not written");
     var readBack = Fable2ConfigFile.Read(advPath);
     Require(readBack.MouseLook, "mouse look roundtrip failed");
+    Require(readBack.KeyboardButtonPrompts, "keyboard button prompts roundtrip failed");
     Require(readBack.MouseLookScale == 512, "mouse scale roundtrip failed");
     Require(readBack.DirectMouseLook, "direct mouse look roundtrip failed");
     Require(!readBack.UnlockCe, "unlock_ce roundtrip failed");

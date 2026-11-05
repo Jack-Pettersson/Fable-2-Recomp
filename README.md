@@ -206,6 +206,15 @@ console, so you can dial in the sensitivity live. Example: `fable_2.exe
 
 All cvars above are hot-reloadable, so they can also be changed from the in-game console.
 
+### Keyboard button prompts
+
+`[input] keyboard_button_prompts = true` (the **Keyboard button prompts** box
+in the launcher's Keybinds panel) shows your keys instead of controller
+buttons on in-game prompts. The game draws them from the keyboard map at
+startup, using the characters on your own keyboard layout, and serves the
+changed GUI textures from memory. The game files are not modified. Changes
+to the map take effect on the next launch.
+
 ## F5 — run an external Lua script
 
 Pressing **F5** (host keyboard) runs an external Lua file in the in-game Lua

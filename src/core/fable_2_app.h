@@ -38,6 +38,7 @@
 // Re-enable to re-measure the frame pacing:
 // #include "fps_probe.h"
 #include "keyboard_gamepad.h"
+#include "button_prompt_files.h"
 // The console pad (f2 pad) uses the remote-pad driver in every build.
 #include "remote_gamepad_driver.h"
 #ifdef FABLE2_REMOTE_CONTROL
@@ -349,6 +350,9 @@ class Fable2App : public rex::ReXApp {
     seed_cvar("keyboard_gamepad_map", cfg.keyboard_gamepad_map);
     seed_cvar("mouse_look", cfg.mouse_look ? "true" : "false");
     seed_cvar("mouse_look_scale", std::to_string(cfg.mouse_look_scale));
+    // Before the runtime lists the game folders (src/input/button_prompt_files.h).
+    fable2::prompts::Prepare(game_data_root(), cfg.keyboard_button_prompts,
+                             REXCVAR_GET(keyboard_gamepad_map), REXCVAR_GET(mouse_look));
     // NOTE: the hero/dog readback fix (readback_resolve_force_addresses) is a
     // GPU-PLUGIN cvar, so it is seeded in OnPostSetup() (after the plugin is
     // loaded) rather than here - see plans/hero-dog-texture-readback.md.

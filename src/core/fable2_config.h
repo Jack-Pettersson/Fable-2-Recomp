@@ -41,6 +41,9 @@ struct Values {
   // mouse_look_scale); the cvar keeps its compiled default as a fallback so
   // an empty/missing config can never wedge input.
   bool mouse_look = true;
+  // Draw the keyboard map's keys over controller buttons on in-game prompts
+  // (src/input/button_prompt_files.h).
+  bool keyboard_button_prompts = false;
   // Shared mouse-look sensitivity slider (1..4096, 256 = 1x): legacy stick
   // units-per-pixel, and a multiplier on mouse_look_*_sens for direct look.
   int32_t mouse_look_scale = 256;  // range 1..4096 (cvar constraint)

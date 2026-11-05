@@ -246,6 +246,12 @@
             <Border Style="{StaticResource Panel}">
               <StackPanel>
                 <TextBlock Text="Keybinds" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="Keyboard button prompts" FontWeight="SemiBold" />
+                <TextBlock Text="Show your keys instead of controller buttons on in-game prompts."
+                           FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,3,0,0"
+                           TextWrapping="Wrap" />
+                <CheckBox x:Name="KeyboardButtonPromptsCheck" Margin="0,10,0,16"
+                          Foreground="{StaticResource TextBrush}" />
                 <TextBlock Text="HOST KEY  →  GUEST INPUT" Style="{StaticResource FieldLabel}" />
                 <StackPanel x:Name="KeybindList" />
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">

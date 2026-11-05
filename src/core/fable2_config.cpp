@@ -75,6 +75,12 @@ keyboard_gamepad_map = "LMB:X,RMB:Y,MMB:B,Shift:A,E:A,Q:LT,Tab:RB,R:RT,Z:LB,B:B,
 # Default: true
 mouse_look = true
 
+# Show your keys instead of controller buttons on in-game prompts. The game
+# draws them from keyboard_gamepad_map at startup; the game files are not
+# changed.
+# Default: false
+keyboard_button_prompts = false
+
 # Mouse-look sensitivity slider (1..4096; 256 = 1x). Shared by BOTH look modes:
 # for the legacy right-stick mapping it sets the stick units per pixel; for
 # direct mouse look it multiplies mouse_look_yaw_sens / mouse_look_pitch_sens.
@@ -332,6 +338,9 @@ bool Load(const std::filesystem::path& path) {
     values.mouse_look =
         Read<bool>(input_table, "input", "mouse_look", "boolean",
                    values.mouse_look);
+    values.keyboard_button_prompts =
+        Read<bool>(input_table, "input", "keyboard_button_prompts", "boolean",
+                   values.keyboard_button_prompts);
     values.mouse_look_scale = static_cast<int32_t>(Read<int64_t>(
         input_table, "input", "mouse_look_scale", "integer",
         values.mouse_look_scale));
