@@ -1,18 +1,13 @@
 # Windows runtime fixes
 
-The tested source baseline is `himdo/rexglue-sdk` commit
-`1338ec1011739c7f00f8df9b9473e34d3dd9f2df` (upstream's dog rendering fix).
-`thirdparty/rexglue-sdk-runtime-fixes.patch` carries the additional audio,
-frame-pacing, Release FPS-counter and Windows export changes as source.
-`thirdparty/rexglue-sdk-debug-exports.patch` adds the performance-counter and cvar
-exports needed by Debug's GPU plugin, shutdown path and debug control server.
-It applies separately so an SDK checkout already carrying the original patch
-can upgrade without resetting it.
-It also removes the hardcoded `LIBRARY rexruntime` name from the export table:
+The source SDK is `himdo/rexglue-sdk`, pinned through the `thirdparty/rexglue-sdk`
+submodule. The audio, frame-pacing, Release FPS-counter and Windows export
+changes are part of that fork, as are the performance-counter and cvar exports
+needed by Debug's GPU plugin, shutdown path and debug control server.
+The fork also removes the hardcoded `LIBRARY rexruntime` name from the export table:
 the linker must use its actual output name, so Debug imports `rexruntimed.dll`
 rather than accidentally loading a leftover Release `rexruntime.dll`.
-The SDK source comes from that fork, through the `thirdparty/rexglue-sdk`
-submodule. No binary download of a patched runtime, game files or saves are
+No binary download of a patched runtime, game files or saves are
 required from this contribution. Original GOTY game files are still required
 to generate and run the game.
 
@@ -28,13 +23,12 @@ tests\run_native_tests.cmd
 dotnet run --project tests/Fable2.Launcher.ConfigTests -c Release
 ```
 
-Both Debug and Release builds prepare the pinned SDK, apply the patch, build D3D12 runtime
+Both Debug and Release builds prepare the pinned SDK, build D3D12 runtime
 and GPU targets, and stage matched headers, integration sources, import
 libraries and DLLs. The host is rebuilt against that staged SDK. The official
 0.10.0 codegen executable remains in a separate directory with its original
 runtime; mixing newer native DLLs into its directory is not supported.
-Patch conflicts and unexpected SDK revisions fail rather than overwrite edits.
-`build.cmd fable_2` builds the Debug host and a patched Debug SDK;
+`build.cmd fable_2` builds the Debug host and a Debug SDK;
 `build.cmd -release fable_2` builds the Release pair. Debug SDK build/staging directories
 are `out/build/runtime-sdk-debug` and `out/tooling/runtime-sdk-debug/win-amd64`;
 Release keeps `out/build/runtime-sdk` and `out/tooling/runtime-sdk/win-amd64`.
@@ -83,6 +77,11 @@ the old 60-Hz guest pacing therefore held it at 30 even with a 60-FPS limit.
 disables it for 60/unlimited independently of presentation VSync. The limiter
 uses a private high-resolution waitable timer on Windows, with a standard wait
 fallback, and does not change the guest clock or advertised video mode.
+`host_frame_limit` caps presents to the display (0 disables it, SDK range
+0–1000; the launcher offers the same presets). It skips presents rather than
+waiting, so the guest keeps its own rate, and counts every present, including
+UI repaints between guest frames. This is the rate external overlays such as
+NVIDIA's report.
 F3 counts guest swaps in Release, averaged over a short window and including
 stalls; it does not count monitor refreshes or establish unique rendered frames.
 
