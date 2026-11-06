@@ -207,6 +207,20 @@ hero_dog_texture_readback = false
 # Default: true
 dog_fur_depth_bias = true
 
+# Terrain Tessellation on CPU (SDK cvar terrain_tess_cpu): compute the terrain's
+# tessellation factors on the CPU instead of running that shader on the GPU and
+# waiting every frame to read the result back. Raised a busy town from 50 to 60
+# FPS at 1x in testing. D3D12 only. false = GPU, as original.
+# Default: false
+terrain_tess_cpu = false
+
+# Skinning on CPU (SDK cvar skinning_cpu): compute the vertices the game skins
+# with memexport shader F6C546D6C2645541 on the CPU, which removes another wait
+# for the GPU every frame. Matched the GPU output in testing. D3D12 only.
+# false = GPU, as original.
+# Default: false
+skinning_cpu = false
+
 [perf]
 # NtYieldExecution batching for the hot-function overrides (see
 # src/core/hotfunc/hotfunc_yield.h): every Nth guest yield does the real

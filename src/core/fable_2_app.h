@@ -192,6 +192,23 @@ class Fable2App : public rex::ReXApp {
                     "(SDK without depth_bias_shader?)");
       }
     }
+    // [patches] terrain_tess_cpu and skinning_cpu seed GPU-plugin cvars, so here.
+    if (fable2::config::Get().terrain_tess_cpu) {
+      for (const char* cvar : {"terrain_tess_cpu"}) {
+        if (rex::cvar::GetFlagSource(cvar) == rex::cvar::Source::kDefault &&
+            !rex::cvar::SetFlagByName(cvar, "true")) {
+          REXSYS_WARN("[fable2-config] {} cvar missing (SDK without it?)", cvar);
+        }
+      }
+    }
+    if (fable2::config::Get().skinning_cpu) {
+      for (const char* cvar : {"skinning_cpu"}) {
+        if (rex::cvar::GetFlagSource(cvar) == rex::cvar::Source::kDefault &&
+            !rex::cvar::SetFlagByName(cvar, "true")) {
+          REXSYS_WARN("[fable2-config] {} cvar missing (SDK without it?)", cvar);
+        }
+      }
+    }
 
     // Feed the F3 debug overlay with guest FPS (below). The GPU plugin
     // records per-guest-swap frame timing into the shared perf registry
