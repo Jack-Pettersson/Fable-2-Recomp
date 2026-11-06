@@ -209,6 +209,14 @@ class Fable2App : public rex::ReXApp {
         }
       }
     }
+    // The fast memexport readback hands the guest the previous draw's output, so
+    // moving geometry uses stale data and flickers. With both shaders on the CPU
+    // nothing is left to read back in testing, so the exact path costs nothing.
+    if (fable2::config::Get().terrain_tess_cpu && fable2::config::Get().skinning_cpu &&
+        rex::cvar::GetFlagSource("readback_memexport_fast") == rex::cvar::Source::kDefault &&
+        !rex::cvar::SetFlagByName("readback_memexport_fast", "false")) {
+      REXSYS_WARN("[fable2-config] readback_memexport_fast cvar missing");
+    }
 
     // Feed the F3 debug overlay with guest FPS (below). The GPU plugin
     // records per-guest-swap frame timing into the shared perf registry
