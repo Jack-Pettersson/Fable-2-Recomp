@@ -91,9 +91,11 @@ its time comes out of `copy`, so its count is the draws plus the copies.
   one before. When it is the largest section, the card (resolution, effects)
   limits the frame rate there, not the translation of draws. Two checks:
   lower the resolution and `fence_wait` should fall, or turn the sync off for
-  a moment with `cvar gpu_sync_at_frame_start false`. With the sync off part
-  of the wait moves into `end_submission`, so compare `frame_ms`, not
-  `fence_wait` alone.
+  a moment by typing `gpu_sync_at_frame_start false` in the `~` console (a
+  cvar is typed there by its name, without `f2`; `true` turns it back on).
+  With the sync off part of the wait moves into `end_submission`, so compare
+  `frame_ms`, not `fence_wait` alone. Use this only to measure: the glitches
+  the sync prevents come back while it is off.
 - A section still open when a frame ends is counted in the frame where it
   closes.
 - Only the Direct3D 12 renderer has the draw, copy, submission and present
