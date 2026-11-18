@@ -61,6 +61,7 @@
 // so the file still builds against an older SDK; see the bottom of this file.
 #if __has_include(<rex/logging.h>)
 #include <rex/logging.h>
+#include <rex/perf/frame_recorder.h>
 #define FABLE2_CONSOLE_HAVE_REXLOG 1
 #endif
 
@@ -634,14 +635,14 @@ inline bool run_host_command(const std::string& line, uint8_t* base) {
   }
   if (name == "help") {
     out("help", "host commands: wait waitfor exec echo peek poke expect find <number> freeze unfreeze trace status cvars dumpmem "
-                "cvar history again repeat every autoexec peekf pokef freezef peekstr findstr findf fill scan widescreen pause step pad mouse boot waitui photo traceworld. "
+                "cvar history again repeat every autoexec peekf pokef freezef peekstr findstr findf fill scan widescreen pause step pad mouse boot waitui photo traceworld frames. "
                 "Chain with ';'. Lua commands follow (their text appears in the log).");
     return false;  // Lua prints its own command list too
   }
   if (name == "hosthelp") {
     out("help",
         "host commands: wait waitfor exec echo peek poke expect find freeze unfreeze trace status cvars dumpmem "
-        "cvar history again repeat every autoexec peekf pokef freezef peekstr findstr findf fill scan widescreen pause step pad mouse boot waitui photo traceworld. "
+        "cvar history again repeat every autoexec peekf pokef freezef peekstr findstr findf fill scan widescreen pause step pad mouse boot waitui photo traceworld frames. "
         "Everything else (warp, god, gold, giveall, ...) runs in Lua: type help. "
         "Separate commands with ';'. Addresses are hex guest addresses.");
     return true;
@@ -1350,6 +1351,69 @@ inline bool run_host_command(const std::string& line, uint8_t* base) {
     out("step", "running " + std::to_string(n) + " frame(s)");
     return true;
   }
+  if (name == "frames") {
+    // frames [status|on|detail|off|dump [file]|clear]: the SDK's frame recorder
+    // (rex/perf/frame_recorder.h), a per-frame record of where the time goes.
+    // F8 does "frames dump" while the recorder is on (poll_frames_key).
+    const std::string sub = W.size() > 1 ? W[1] : "status";
+    auto ms = [](float v) {
+      char buf[32];
+      std::snprintf(buf, sizeof buf, "%.2f", v);
+      return std::string(buf);
+    };
+    if (sub == "on" || sub == "detail" || sub == "off") {
+      const char* level = sub == "off" ? "0" : sub == "on" ? "1" : "2";
+      if (!rex::cvar::SetFlagByName("frame_recorder", level))
+        return out("frames", "could not set the frame_recorder cvar", true), true;
+      out("frames", sub == "off"  ? "off"
+                    : sub == "on" ? "on: frame sections. F8 or 'frames dump' saves them"
+                                  : "on: frame sections and the sections inside each draw (costs more)");
+      return true;
+    }
+    if (sub == "clear") {
+      rex_frame_recorder_reset(0);
+      out("frames", "recorded frames cleared");
+      return true;
+    }
+    if (sub == "dump") {
+      char stamp[32] = "";
+      const std::time_t now = std::time(nullptr);
+      std::tm tm{};
+#ifdef _WIN32
+      localtime_s(&tm, &now);
+#else
+      localtime_r(&now, &tm);
+#endif
+      std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", &tm);
+      const std::string fname = W.size() > 2 ? W[2] : std::string("frames-") + stamp + ".csv";
+      std::error_code ec;
+      fs::create_directories(s.root / "console", ec);
+      const fs::path p = s.root / "console" / fs::path(fname).filename();
+      const std::u8string utf8 = p.u8string();
+      // Written on its own thread, so the frame that asked for it is not held up.
+      const uint32_t frames = rex_frame_recorder_dump(std::string(utf8.begin(), utf8.end()).c_str(), 0);
+      if (!frames) return out("frames", "nothing recorded: type 'frames on' and play for a moment", true), true;
+      out("frames", std::to_string(frames) + " frames -> " + p.string());
+      return true;
+    }
+    if (sub == "status") {
+      rex::perf::FrameSummary sum;
+      const uint32_t frames = rex_frame_recorder_summary(0, &sum);
+      out("frames", "level " + rex::cvar::GetFlagByName("frame_recorder") + ", " + std::to_string(frames) +
+                        " frames recorded");
+      if (!frames) return true;
+      out("frames", "frame ms: mean " + ms(sum.frame_ms_mean) + ", p50 " + ms(sum.frame_ms_p50) + ", p95 " +
+                        ms(sum.frame_ms_p95) + ", p99 " + ms(sum.frame_ms_p99) + ", max " + ms(sum.frame_ms_max));
+      std::string zones;
+      for (uint32_t z = 0; z < rex::perf::kFrameZoneCount; ++z) {
+        if (sum.zone_calls_mean[z] > 0) zones += std::string(rex_frame_zone_name(z)) + " " + ms(sum.zone_ms_mean[z]) + ", ";
+      }
+      out("frames", "mean ms per frame: " + zones + "other " + ms(sum.other_ms_mean));
+      return true;
+    }
+    out("frames", "usage: frames [status|on|detail|off|dump [file]|clear]", true);
+    return true;
+  }
   if (name == "widescreen" || name == "ws") {
     // widescreen [status|on|off|aspect <a>|hud|native|log on|off|apply]: the
     // fit-window module (fable2_fit_window.h) while the game runs.
@@ -1942,12 +2006,29 @@ inline void poll_pause_key() {
 #endif
 }
 
+// F8 (game window focused) saves the frame recorder's frames, like typing
+// "frames dump". It does nothing while the recorder is off, so the key stays
+// free for anything else then. Edge-detected; checked every frame.
+inline void poll_frames_key() {
+#ifdef _WIN32
+  static bool prev = false;
+  const bool down = (GetAsyncKeyState(0x77 /* VK_F8 */) & 0x8000) != 0;
+  const bool edge = down && !prev;
+  prev = down;
+  if (!edge || rex::perf::FrameRecorderLevel() == 0) return;
+  DWORD pid = 0;
+  GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+  if (pid != GetCurrentProcessId()) return;
+  enqueue_text("frames dump");
+#endif
+}
+
 // Host commands that work while the game thread is held: they only read or
 // write memory and console state, and pause/step end the hold.
 inline bool runs_while_paused(const std::string& line) {
   static const char* kSafe[] = { "pause", "step", "status", "echo", "hosthelp", "peek", "poke", "peekf",
                                  "pokef", "peekstr", "freeze", "freezef", "unfreeze", "cvar", "cvars",
-                                 "widescreen", "ws", "history", "dumpmem", "find", "findf", "findstr" };
+                                 "widescreen", "ws", "history", "dumpmem", "find", "findf", "findstr", "frames" };
   std::string head = line.substr(0, line.find_first_of(" \t"));
   for (auto& c : head) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   for (const char* k : kSafe)
@@ -2152,6 +2233,7 @@ inline void poll(PPCContext& ctx, uint8_t* base) {
   if (s.pad_frames && --s.pad_frames == 0) PadStore().Publish({});
   stress_tick(1, ctx, base);
   poll_pause_key();
+  poll_frames_key();
   if (s.frames == 1)
     f5lua::logline("[console] %s active, root=%s\n", FABLE2_CONSOLE_BUILD, s.root.string().c_str());
 

@@ -369,6 +369,19 @@ Use these to find what can be read and edited, then change it with `set`, `call`
 | `cvars` | `cvars [text]` | Writes every SDK and game cvar with value, default, range and description to `console\cvars.txt`. | Change one by typing its name and a value in the `~` console. |
 | `dumpmem` | `dumpmem <addr> <bytes> [file]` | Writes raw guest memory (up to 64 MB) to `console\<file>`. | Default file `mem-<addr>.bin`. |
 
+## Frame times
+
+The frame recorder keeps the last 4096 frames in memory, each with the time spent in every section of the frame. It is off by default. See [FRAME_RECORDER.md](../FRAME_RECORDER.md) for what the columns mean.
+
+| Command | Usage | What it does | Notes |
+|---|---|---|---|
+| `frames` | `frames` / `frames status` | Prints the level, the number of frames held, the frame time (mean, p50, p95, p99, max) and the mean time per section. | |
+| `frames on` | `frames on` | Records the frame sections and one section per draw. | Sets the `frame_recorder` cvar to 1. |
+| `frames detail` | `frames detail` | Also records the sections inside each draw. | Sets it to 2. Costs several times more per draw. |
+| `frames off` | `frames off` | Stops recording. | The frames already held stay until `frames clear`. |
+| `frames dump` | `frames dump [file]` | Writes the frames held to `console\<file>` as CSV. | Default file `frames-<date>-<time>.csv`. Only the file name is used: a folder in front of it is ignored. **F8** does the same while the recorder is on. The file is written on its own thread. |
+| `frames clear` | `frames clear` | Forgets the frames held. | Use it before a measurement run. |
+
 ## Host commands added in console-v6
 
 | Command | Usage | What it does | Notes |
