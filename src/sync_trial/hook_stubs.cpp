@@ -18,8 +18,8 @@ bool fable2_hook_address_scan_skip(PPCRegister& /*r26*/, PPCRegister& /*r27*/, P
 void fable2_hook_skip_intro_videos(PPCRegister& /*r3*/) { }
 void fable2_hook_realtime_texture_morphing(PPCRegister& /*r9*/) { }
 
-// Sync trial: upstream 0.11.0 gives the guest real host sockets (xam_net.cpp), with no setting to
-// turn them off. The game's bind() raises a Windows Firewall prompt whose overlay takes all input.
-// The fork had no guest networking either, so fail socket creation (INVALID_SOCKET).
+// Sync trial: the guest gets real host sockets (upstream xam_net.cpp, as in the fork). From a new
+// exe path the game's bind() raises a Windows Firewall prompt whose overlay takes all input, so fail
+// socket creation (INVALID_SOCKET) for unattended runs.
 #include <rex/ppc/hook.h>
 REX_STUB_RETURN(__imp__NetDll_socket, 0xFFFFFFFFu);
