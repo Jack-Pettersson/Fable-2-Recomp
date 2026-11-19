@@ -48,8 +48,14 @@ rexglue_project(fable_2 OUTPUT_DIR generated/default)
 file(GLOB_RECURSE HOTFUNC_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/core/hotfunc/*.cpp)
 
 option(FABLE2_SYNC_TRIAL_MINIMAL "Sync trial: build only the minimal TitleApp and hook stubs" ON)
+option(FABLE2_TRIAL_NO_HOTFUNCS "Sync trial: leave the hotfunc overrides out" OFF)
+if(FABLE2_TRIAL_NO_HOTFUNCS)
+    set(FABLE2_TRIAL_HOTFUNCS "")
+else()
+    set(FABLE2_TRIAL_HOTFUNCS ${HOTFUNC_SOURCES})
+endif()
 if(FABLE2_SYNC_TRIAL_MINIMAL)
-    set(FABLE2_SOURCES src/sync_trial/main.cpp src/sync_trial/hook_stubs.cpp src/core/fable2_config.cpp ${HOTFUNC_SOURCES})
+    set(FABLE2_SOURCES src/sync_trial/main.cpp src/sync_trial/hook_stubs.cpp src/sync_trial/trial_pad.cpp src/core/fable2_config.cpp ${FABLE2_TRIAL_HOTFUNCS})
 else()
 set(FABLE2_SOURCES
     src/main.cpp

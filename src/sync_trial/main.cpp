@@ -4,6 +4,7 @@
 // SDK API: the game's own settings, its paths, its config file and logging.
 // Everything else is stubbed; see "Stubs" in the trial report.
 #include <rex/app/title_app.h>
+#include <rex/module.h>
 #include <rex/logging/log_category.h>
 #include <rex/path_settings.h>
 #include <rex/platform/file.h>
@@ -18,6 +19,10 @@
 #include "generated/default/fable_2_init.h"
 
 #include "fable2_config.h"
+
+namespace sync_trial {
+rex::IModule* GetTrialPadModule();
+}
 
 // The cvars of src/main.cpp as upstream settings under the scope "fable2".
 // The old bare names stay usable through aliases (see OnConfigure).
@@ -105,6 +110,10 @@ class Fable2App : public rex::app::TitleApp {
     // prompt setup (Fable2App::OnPostLoadXexImage).
     REXSYS_INFO("[sync-trial] title launch; game patches stubbed");
     return TitleApp::OnTitleLaunch(title);
+  }
+
+ void OnRegisterModules(std::vector<rex::IModule*>& modules) override {
+    modules.push_back(sync_trial::GetTrialPadModule());
   }
 
  private:
