@@ -41,7 +41,7 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 		// addic. r11,r11,-1
 		ctx.xer.ca = ctx.r11.u32 > 0;
 		ctx.r11.s64 = ctx.r11.s64 + -1;
-		ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+		ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 		// bne 0x82b9bfac
 		if (!ctx.cr0.eq) continue;
 		break;
@@ -51,7 +51,7 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 	ctx.r11.u64 = REX_LOAD_U8(ctx.r29.u32 + 10941);
 	// rlwinm. r11,r11,0,30,30
 	ctx.r11.u64 = __builtin_rotateleft64(ctx.r11.u32 | (ctx.r11.u64 << 32), 0) & 0x2;
-	ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+	ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 	// bne 0x82b9c05c
 	if (!ctx.cr0.eq) {
 		// li r3,0
@@ -69,7 +69,7 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 		// lwz r30,88(r10)
 		ctx.r30.u64 = REX_LOAD_U32(ctx.r10.u32 + 88);
 		// cmplw cr6,r9,r8
-		ctx.cr6.compare<uint32_t>(ctx.r9.u32, ctx.r8.u32, ctx.xer);
+		ctx.cr6.Compare<uint32_t>(ctx.r9.u32, ctx.r8.u32, ctx.xer);
 		// beq cr6,0x82b9c00c
 		if (!ctx.cr6.eq) {
 			// lwz r11,0(r11)
@@ -85,13 +85,13 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 		// lwz r11,10888(r29)
 		ctx.r11.u64 = REX_LOAD_U32(ctx.r29.u32 + 10888);
 		// cmplw cr6,r11,r3
-		ctx.cr6.compare<uint32_t>(ctx.r11.u32, ctx.r3.u32, ctx.xer);
+		ctx.cr6.Compare<uint32_t>(ctx.r11.u32, ctx.r3.u32, ctx.xer);
 		// bne cr6,0x82b9c02c
 		if (ctx.cr6.eq) {
 			// lwz r11,11004(r29)
 			ctx.r11.u64 = REX_LOAD_U32(ctx.r29.u32 + 11004);
 			// cmpwi cr6,r11,0
-			ctx.cr6.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+			ctx.cr6.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 			// beq cr6,0x82b9c02c
 			if (!ctx.cr6.eq) {
 				// stw r30,12(r31)
@@ -103,7 +103,7 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 		// subf r11,r11,r30
 		ctx.r11.u64 = ctx.r30.u64 - ctx.r11.u64;
 		// cmplwi cr6,r11,5000
-		ctx.cr6.compare<uint32_t>(ctx.r11.u32, 5000, ctx.xer);
+		ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 5000, ctx.xer);
 		// bge cr6,0x82b9c044
 		if (ctx.cr6.lt) {
 			// li r3,1
@@ -116,7 +116,7 @@ extern "C" void GpuProgressCheck_82B9BF90(PPCContext& __restrict ctx, uint8_t* b
 			ctx.lr = 0x82B9C04C;
 			sub_82BA0E80(ctx, base);
 			// cmpwi r3,0
-			ctx.cr0.compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
+			ctx.cr0.Compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
 			// bne 0x82b9c05c
 			if (!ctx.cr0.eq) {
 				// li r3,0

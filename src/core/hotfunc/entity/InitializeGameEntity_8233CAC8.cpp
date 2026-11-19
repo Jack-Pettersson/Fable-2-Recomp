@@ -121,11 +121,11 @@ extern "C" void InitializeGameEntity_8233CAC8(PPCContext& __restrict ctx, uint8_
   const u32 state = gload32(a + 140, base);      // lwz r10,140(r30)
   const u32 p184 = gload32(state + 184, base);   // lwz r3,184(r10)
   ctx.r3.u64 = p184;
-  ctx.cr6.compare<i32>(static_cast<i32>(p184), 0, ctx.xer);  // cmpwi cr6,r3,0
+  ctx.cr6.Compare<i32>(static_cast<i32>(p184), 0, ctx.xer);  // cmpwi cr6,r3,0
   if (p184 != 0) {
     // bne cr6 -> re-read the global (the setup calls above may have mutated it).
     const u32 g = gload32(0x834A5B6C, base);     // lwz r11,23404(r31)  (second read)
-    ctx.cr6.compare<u32>(g, 0, ctx.xer);         // cmplwi cr6,r11,0
+    ctx.cr6.Compare<u32>(g, 0, ctx.xer);         // cmplwi cr6,r11,0
     const u32 r5 = (g != 0)
         ? gload32(g, base)                        // lwz r5,0(r11)
         : 0x8209003F;                             // lis r11,-32247; addi r5,r11,63
@@ -147,16 +147,16 @@ extern "C" void InitializeGameEntity_8233CAC8(PPCContext& __restrict ctx, uint8_
   ctx.r3.u64 = state2;
   gstore8(a + 256, base, 1);                      // li r10,1; stb r10,256(r30)
   const u32 start = gload32(state2 + 88, base);   // lwz r10,88(r3)
-  ctx.cr6.compare<u32>(start, 0, ctx.xer);        // cmplwi cr6,r10,0
+  ctx.cr6.Compare<u32>(start, 0, ctx.xer);        // cmplwi cr6,r10,0
   if (start != 0) {
     const u32 end = gload32(state2 + 92, base);   // lwz r9,8(r11) (r11 = r3+84)
     // subf r7,r10,r9; divw. r6,r7,24: count = (i32)(end - start) / 24 (24-byte
     // stride; the divisor is a constant, so the overflow guard can never fire).
     const i32 count = static_cast<i32>(static_cast<u32>(end) - start) / 24;
-    ctx.cr0.compare<i32>(count, 0, ctx.xer);      // divw. cr0 = (count vs 0)
+    ctx.cr0.Compare<i32>(count, 0, ctx.xer);      // divw. cr0 = (count vs 0)
     if (count != 0) {
       const u32 start2 = gload32(state2 + 88, base);  // lwz r10,4(r11) (reloaded)
-      ctx.cr6.compare<u32>(start2, end, ctx.xer);    // cmplw cr6,r10,r9 (rotlwi r9,r9,0 is a no-op)
+      ctx.cr6.Compare<u32>(start2, end, ctx.xer);    // cmplw cr6,r10,r9 (rotlwi r9,r9,0 is a no-op)
       if (start2 > end) {
         ppc_trap(ctx, base, 22);                  // twi 31,r0,22
       }
@@ -175,10 +175,10 @@ extern "C" void InitializeGameEntity_8233CAC8(PPCContext& __restrict ctx, uint8_
 
   // --- Ref-counted copy from the shared global context chain ---
   const u32 p0 = gload32(ref, base);              // lwz r11,0(r29)
-  ctx.cr6.compare<u32>(p0, 0, ctx.xer);           // cmplwi cr6,r11,0
+  ctx.cr6.Compare<u32>(p0, 0, ctx.xer);           // cmplwi cr6,r11,0
   if (p0 != 0) {
     const u32 p4 = gload32(p0 + 4, base);         // lwz r11,4(r11)
-    ctx.cr6.compare<i32>(static_cast<i32>(p4), 0, ctx.xer);  // cmpwi cr6,r11,0
+    ctx.cr6.Compare<i32>(static_cast<i32>(p4), 0, ctx.xer);  // cmpwi cr6,r11,0
     if (p4 != 0) {
       const u32 root = gload32(0x83496920, base); // lis r11,-31927; lwz r11,26912(r11)
       const u32 mid = gload32(root + 8, base);  // lwz r10,8(r11)

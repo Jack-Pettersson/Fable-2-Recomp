@@ -82,7 +82,7 @@ extern "C" void LazyInitSubsystemB_822C6C60(PPCContext& __restrict ctx, uint8_t*
   // One-time init guard on flag bit 0 at 0x834C3508.
   const u32 kFlag = 0x834C3508;               // r10.u32 + 13576
   const u32 flag = gload32(kFlag, base);       // lwz r11,13576(r10)
-  ctx.cr6.compare<u32>(flag & 1, 0, ctx.xer);  // clrlwi r9,r11,31; cmplwi cr6,r9,0
+  ctx.cr6.Compare<u32>(flag & 1, 0, ctx.xer);  // clrlwi r9,r11,31; cmplwi cr6,r9,0
   if ((flag & 1) == 0) {             // bne cr6 -> already initialized, skip
     gstore32(kFlag, base, flag | 1); // ori r11,r11,1; stw r11,13576(r10)
 

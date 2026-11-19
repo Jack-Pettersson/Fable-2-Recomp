@@ -1,7 +1,7 @@
 // hotfunc_yield.h - batched NtYieldExecution for hot-function overrides.
 //
 // Guest work loops (e.g. the ProcessGameFrame_82276C30 loop) call NtYieldExecution once
-// per iteration. The SDK implements it as rex::thread::MaybeYield() =
+// per iteration. The SDK implements it as rex::platform::MaybeYield() =
 // SwitchToThread() + MemoryBarrier(). SwitchToThread is a real scheduler
 // transition: when another guest thread (vblank worker, audio, ...) is ready
 // it runs to completion/block, and the whole duration is charged to the
@@ -30,7 +30,7 @@
 #include "hotfunc_idle_sleep.h"
 
 // Forward declaration resolved against the rexruntime.dll export
-// (.?MaybeYield@thread@rex@@YAXXZ = rex::thread::MaybeYield(), void() -
+// (.?MaybeYield@thread@rex@@YAXXZ = rex::platform::MaybeYield(), void() -
 // verified in rexruntime.def).
 namespace rex {
 namespace thread {
@@ -86,7 +86,7 @@ inline void BatchedYield() {
   static thread_local uint32_t n = 0;
   if (++n >= static_cast<uint32_t>(every)) {
     n = 0;
-    rex::thread::MaybeYield();  // SwitchToThread() + full MemoryBarrier()
+    rex::platform::MaybeYield();  // SwitchToThread() + full MemoryBarrier()
   } else {
     // Compiler-only barrier: no mfence on x86. TSO covers hardware ordering;
     // this just stops the optimizer reordering guest accesses across the point.

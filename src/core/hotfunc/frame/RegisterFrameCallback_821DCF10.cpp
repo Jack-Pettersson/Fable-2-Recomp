@@ -47,7 +47,7 @@
 // word at 0x820994C0 (the float->double->float round trip is lossless). It is
 // reduced to a single gload32 here (the dead stack scratch writes are omitted).
 // Likewise each lvx128/vand/stvx128 pair is four 32-bit gload32/gstore32 ANDs,
-// so no VectorMaskL/simde is needed. The single fpscr.disableFlushMode() the
+// so no kVectorMaskL/simde is needed. The single fpscr.DisableFlushMode() the
 // generated copy performs before the lfs is kept so the guest fpscr state
 // matches.
 #include "fable_2_pch.h"
@@ -108,7 +108,7 @@ extern "C" void RegisterFrameCallback_821DCF10(PPCContext& __restrict ctx, uint8
 
 	if (!tookInlinePath) {
 		// Default path: synthesize the descriptor in place at arg1.
-		ctx.fpscr.disableFlushMode();           // lfs f0: match generated fpscr side effect
+		ctx.fpscr.DisableFlushMode();           // lfs f0: match generated fpscr side effect
 		const u32 mask = gload32(0x820994C0);   // splat float, all four lanes
 		for (u32 i = 0; i < 16; i += 4) {       // vspltisw v0,0 / stvx128 v0
 			gstore32(arg1 + i, 0);

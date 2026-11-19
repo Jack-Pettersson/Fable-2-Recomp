@@ -91,13 +91,13 @@ extern "C" void QueryActivePlayerMethod_821EC8A0(PPCContext& __restrict ctx, uin
 
   // --- Resolve the context root and the enable flag byte ---
   const u32 root = gload32(0x83496920, base);  // lis r11,-31927; lwz r10,26912(r11)
-  ctx.cr6.compare<u32>(root, 0, ctx.xer);      // cmplwi cr6,r10,0
+  ctx.cr6.Compare<u32>(root, 0, ctx.xer);      // cmplwi cr6,r10,0
   u32 flag = 0;
   if (root != 0) {                             // beq -> flag stays 0
     flag = gload8(0x834968C5, base);           // lbz r11,26821(r11)
   }
   flag &= 0xFF;                                // clrlwi r11,r11,24
-  ctx.cr6.compare<u32>(flag, 0, ctx.xer);      // cmplwi cr6,r11,0
+  ctx.cr6.Compare<u32>(flag, 0, ctx.xer);      // cmplwi cr6,r11,0
 
   if (flag != 0) {                             // bne -> main body
     // Walk the global context chain rooted at *(u32*)0x83496920.
@@ -109,7 +109,7 @@ extern "C" void QueryActivePlayerMethod_821EC8A0(PPCContext& __restrict ctx, uin
     // Corruption check (cmplw cr6,r11,r10; twi 31,r0,22 x2): `next` must not
     // be `node` itself. The recompiler models twi as a non-fatal log and falls
     // through, so we do the same (twice, as disassembled).
-    ctx.cr6.compare<u32>(next, node, ctx.xer);
+    ctx.cr6.Compare<u32>(next, node, ctx.xer);
     if (next == node) {
       ppc_trap(ctx, base, 22);
       ppc_trap(ctx, base, 22);

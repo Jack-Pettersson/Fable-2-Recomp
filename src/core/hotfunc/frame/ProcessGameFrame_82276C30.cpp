@@ -143,11 +143,6 @@ extern "C" void sub_8243A2C8(PPCContext& ctx, uint8_t* base);
 // Cached reference to the SDK's global critical region mutex: same mutex and
 // same lock/unlock order as REX_ENTER/LEAVE_GLOBAL_LOCK, without the
 // per-use DLL call to global_critical_region::mutex().
-static inline std::recursive_mutex& hotfunc_gcr_mutex() {
-  static thread_local std::recursive_mutex& cached =
-      rex::thread::global_critical_region::mutex();
-  return cached;
-}
 
 // --- Guest global addresses ---
 // The frame loop reads/writes a fixed set of globals. The recompiler builds
@@ -190,10 +185,9 @@ static __attribute__((noinline)) void decrement_global_counter(PPCContext& ctx, 
                                             PPCRegister* msr_save) {
 	uint32_t ea{};
 	do {
-		msr_save->u64 = ppc_global_lock_count_().load(std::memory_order_acquire) ? 0 : 0x8000;
+		msr_save->u64 = static_cast<u64>(ctx.msr);  // upstream REX_CHECK_GLOBAL_LOCK()
 		std::atomic_thread_fence(std::memory_order_seq_cst);
 		ctx.msr = (ctx.r13.u32 & 0x8020) | (ctx.msr & ~0x8020);
-		hotfunc_gcr_mutex().lock(); ppc_global_lock_count_().fetch_add(1);
 		ea = addr->u32;
 		ctx.reserved.u32 = *(uint32_t*)REX_RAW_ADDR(ea);
 		val->u64 = __builtin_bswap32(ctx.reserved.u32);
@@ -205,8 +199,6 @@ static __attribute__((noinline)) void decrement_global_counter(PPCContext& ctx, 
 		ctx.cr0.so = ctx.xer.so;
 		std::atomic_thread_fence(std::memory_order_seq_cst);
 		ctx.msr = (msr_save->u32 & 0x8020) | (ctx.msr & ~0x8020);
-		{ auto old_ = ppc_global_lock_count_().fetch_sub(1); assert(old_ >= 1); }
-		hotfunc_gcr_mutex().unlock();
 	} while (!ctx.cr0.eq);
 }
 
@@ -216,7 +208,7 @@ static __attribute__((noinline)) void decrement_global_counter(PPCContext& ctx, 
 static __attribute__((noinline)) void query_guest_timebase(PPCContext& ctx, uint8_t* base) {
 	ctx.r11.u64 = REX_QUERY_TIMEBASE();
 	ctx.r10.u64 = __builtin_rotateleft32(ctx.r11.u32, 0);
-	ctx.cr0.compare<int32_t>(ctx.r10.s32, 0, ctx.xer);
+	ctx.cr0.Compare<int32_t>(ctx.r10.s32, 0, ctx.xer);
 	if (ctx.cr0.eq) {
 		ctx.r11.u64 = REX_QUERY_TIMEBASE();
 	}
@@ -242,13 +234,13 @@ static __attribute__((noinline)) void probe_and_setup(PPCContext& ctx, uint8_t* 
 	// clrlwi r9,r3,24
 	ctx.r9.u64 = ctx.r3.u32 & 0xFF;
 	// cmplwi cr6,r9,0
-	ctx.cr6.compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
 	// bne cr6,0x82276c88  (block runs when cr6.eq)
 	if (ctx.cr6.eq) {
 	// lwz r11,108(r31)
 	ctx.r11.u64 = GV32(ctx.r31.u32 + 108);
 	// lfd f1,272(r31)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f1.u64 = GV64(ctx.r31.u32 + 272);
 	// lwz r3,104(r31)
 	ctx.r3.u64 = GV32(ctx.r31.u32 + 104);
@@ -279,7 +271,7 @@ static __attribute__((noinline)) void compute_frame_timing(PPCContext& ctx, uint
 	// addi r3,r1,104
 	ctx.r3.s64 = ctx.r1.s64 + 104;
 	// lfd f13,-27368(r10)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f13.u64 = GV64(ctx.r10.u32 + -27368);
 	// lfd f0,27416(r30)
 	ctx.f0.u64 = GV64(ctx.r30.u32 + 27416);
@@ -312,7 +304,7 @@ static __attribute__((noinline)) void compute_frame_timing(PPCContext& ctx, uint
 	ctx.lr = 0x82276CD8;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f10,104(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f10.u64 = GV64(ctx.r1.u32 + 104);
 	// lis r27,-31927
 	ctx.r27.s64 = (int64_t)(int32_t)0x83490000;
@@ -334,7 +326,7 @@ static __attribute__((noinline)) void compute_frame_timing(PPCContext& ctx, uint
 	ctx.lr = 0x82276D00;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f7,112(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f7.u64 = GV64(ctx.r1.u32 + 112);
 	// lis r22,-31926
 	ctx.r22.s64 = (int64_t)(int32_t)0x834A0000;
@@ -376,7 +368,7 @@ static __attribute__((noinline)) void compute_frame_timing(PPCContext& ctx, uint
 	// clrlwi r3,r3,24
 	ctx.r3.u64 = ctx.r3.u32 & 0xFF;
 	// cmplwi cr6,r3,0
-	ctx.cr6.compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
 }
 
 static __attribute__((noinline)) void setup_frame(PPCContext& ctx, uint8_t* base) {
@@ -384,7 +376,7 @@ static __attribute__((noinline)) void setup_frame(PPCContext& ctx, uint8_t* base
 	// lis r7,-32240
 	ctx.r7.s64 = (int64_t)(int32_t)0x82100000;
 	// lfs f21,0(r30)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.u32 = GV32(ctx.r30.u32 + 0);
 	ctx.f21.f64 = double(temp.f32);
 	// lis r8,-32256
@@ -422,13 +414,13 @@ static __attribute__((noinline)) bool frame_gate(PPCContext& ctx, uint8_t* base)
 	// lbz r11,256(r31)
 	ctx.r11.u64 = GV8(ctx.r31.u32 + 256);
 	// cmplwi cr6,r11,0
-	ctx.cr6.compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
 	// beq cr6,0x82276dd8  (block runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// lbz r11,257(r31)
 	ctx.r11.u64 = GV8(ctx.r31.u32 + 257);
 	// cmplwi cr6,r11,0
-	ctx.cr6.compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
 	// beq cr6,0x82276dd8  (critical-section block runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// bl 0x8217fd08
@@ -451,7 +443,7 @@ static __attribute__((noinline)) bool frame_gate(PPCContext& ctx, uint8_t* base)
 	ctx.lr = 0x82276DD0;
 	__imp__RtlLeaveCriticalSection(ctx, base);
 	// cmpwi cr6,r30,0
-	ctx.cr6.compare<int32_t>(ctx.r30.s32, 0, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r30.s32, 0, ctx.xer);
 	// beq cr6,0x8227722c  (break out of the frame loop)
 	if (ctx.cr6.eq) {
 		return false;  // break out of the frame loop
@@ -468,7 +460,7 @@ static __attribute__((noinline)) void compute_loop_timing(PPCContext& ctx, uint8
 	ctx.lr = 0x82276DE0;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f10,120(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f10.u64 = GV64(ctx.r1.u32 + 120);
 	// fcfid f9,f10
 	ctx.f9.f64 = double(ctx.f10.s64);
@@ -504,7 +496,7 @@ static __attribute__((noinline)) void compute_loop_timing(PPCContext& ctx, uint8
 	ctx.r9.s64 = ctx.r10.s32;
 	// subf. r30,r28,r29
 	ctx.r30.u64 = ctx.r29.u64 - ctx.r28.u64;
-	ctx.cr0.compare<int32_t>(ctx.r30.s32, 0, ctx.xer);
+	ctx.cr0.Compare<int32_t>(ctx.r30.s32, 0, ctx.xer);
 	// std r9,176(r1)
 	SV64(ctx.r1.u32 + 176, ctx.r9.u64);
 	// lfd f4,176(r1)
@@ -538,7 +530,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// lbz r11,26940(r11)
 	ctx.r11.u64 = GV8(ctx.r11.u32 + 26940);
 	// cmplwi cr6,r11,0
-	ctx.cr6.compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
 	// beq cr6,0x82276eac  (inner block runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// addi r3,r1,160
@@ -547,7 +539,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x82276E6C;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f12,160(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f12.u64 = GV64(ctx.r1.u32 + 160);
 	// fcfid f11,f12
 	ctx.f11.f64 = double(ctx.f12.s64);
@@ -562,7 +554,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// fsub f8,f9,f23
 	ctx.f8.f64 = ctx.f9.f64 - ctx.f23.f64;
 	// fcmpu cr6,f8,f22
-	ctx.cr6.compare(ctx.f8.f64, ctx.f22.f64);
+	ctx.cr6.Compare(ctx.f8.f64, ctx.f22.f64);
 	// ble cr6,0x82276eac  (entity-init runs when cr6.gt)
 	if (ctx.cr6.gt) {
 	// li r5,-1
@@ -589,7 +581,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x82276EB4;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f12,128(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f12.u64 = GV64(ctx.r1.u32 + 128);
 	// fcfid f11,f12
 	ctx.f11.f64 = double(ctx.f12.s64);
@@ -598,7 +590,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// lfd f13,28360(r26)
 	ctx.f13.u64 = GV64(ctx.r26.u32 + 28360);
 	// cmpwi cr6,r30,1
-	ctx.cr6.compare<int32_t>(ctx.r30.s32, 1, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r30.s32, 1, ctx.xer);
 	// fsub f10,f11,f0
 	ctx.f10.f64 = ctx.f11.f64 - ctx.f0.f64;
 	// fdiv f30,f10,f13
@@ -621,7 +613,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// divw r11,r29,r25
 	ctx.r11.u64 = uint32_t((ctx.r25.s32 && !(ctx.r29.s32 == INT32_MIN && ctx.r25.s32 == -1)) ? ctx.r29.s32 / ctx.r25.s32 : 0);
 	// cmpw cr6,r11,r10
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, ctx.r10.s32, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, ctx.r10.s32, ctx.xer);
 	// li r10,1
 	ctx.r10.s64 = 1;
 	// bgt cr6,0x82276f00  (r10=r20 when !cr6.gt)
@@ -634,7 +626,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// clrlwi r28,r10,24
 	ctx.r28.u64 = ctx.r10.u32 & 0xFF;
 	// cmpw cr6,r11,r9
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, ctx.r9.s32, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, ctx.r9.s32, ctx.xer);
 	// beq cr6,0x82276f14  (store when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// stw r11,96(r1)
@@ -643,12 +635,12 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// clrlwi r30,r28,24
 	ctx.r30.u64 = ctx.r28.u32 & 0xFF;
 	// lfd f1,272(r31)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f1.u64 = GV64(ctx.r31.u32 + 272);
 	// li r5,6
 	ctx.r5.s64 = 6;
 	// cmplwi cr6,r30,0
-	ctx.cr6.compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
 	// beq cr6,0x82276fac  (PAIR A when !cr6.eq, PAIR B when cr6.eq)
 	if (!ctx.cr6.eq) {
 	// addi r3,r1,88
@@ -741,7 +733,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	SV32(ctx.r1.u32 + 92, ctx.r20.u32);
 	}
 	// cmplwi cr6,r30,0
-	ctx.cr6.compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
 	// --- Active-player frame update ---
 	// bne cr6,0x8227704c  (call-active when !cr6.eq; else query first)
 	{
@@ -757,7 +749,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// clrlwi r10,r3,24
 	ctx.r10.u64 = ctx.r3.u32 & 0xFF;
 	// cmplwi cr6,r10,0
-	ctx.cr6.compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
 	// beq cr6,0x82277054  (call-active when !cr6.eq)
 	call_active = !ctx.cr6.eq;
 	}
@@ -785,7 +777,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// extsw r8,r25
 	ctx.r8.s64 = ctx.r25.s32;
 	// stfs f21,26908(r21)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.f32 = float(ctx.f21.f64);
 	SV32(ctx.r21.u32 + 26908, temp.u32);
 	// mullw r7,r9,r25
@@ -837,7 +829,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x822770C8;
 	sub_822A9B20(ctx, base);
 	// cmplwi cr6,r30,0
-	ctx.cr6.compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r30.u32, 0, ctx.xer);
 	// beq cr6,0x82277164  (registration block runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// lwz r30,156(r31)
@@ -848,7 +840,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x822770DC;
 	ResolveSubsystemReference_821F8760(ctx, base);
 	// cmplwi cr6,r3,0
-	ctx.cr6.compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
 	// beq cr6,0x8227712c  (callback registration runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// mr r3,r30
@@ -869,26 +861,26 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.r10.s64 = ctx.r3.s64 + 16;
 	// lvx128 v0,r0,r3
 	ea = (ctx.r3.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)ctx.v0.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)ctx.v0.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// addi r9,r11,16
 	ctx.r9.s64 = ctx.r11.s64 + 16;
 	// stvx128 v0,r0,r11
 	ea = (ctx.r11.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v0.u8), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v0.u8), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// lvx128 v13,r0,r10
 	ea = (ctx.r10.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)ctx.v13.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)ctx.v13.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// stvx128 v13,r0,r9
 	ea = (ctx.r9.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v13.u8), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v13.u8), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// lvx128 v12,r10,r19
 	ea = (ctx.r10.u32 + ctx.r19.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)ctx.v12.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)ctx.v12.u8, simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)REX_RAW_ADDR(ea)), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// stvx128 v12,r9,r19
 	ea = (ctx.r9.u32 + ctx.r19.u32) & ~0xF;
-	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v12.u8), simde_mm_load_si128((simde__m128i*)VectorMaskL)));
+	simde_mm_store_si128((simde__m128i*)REX_RAW_ADDR(ea), simde_mm_shuffle_epi8(simde_mm_load_si128((simde__m128i*)ctx.v12.u8), simde_mm_load_si128((simde__m128i*)kVectorMaskL)));
 	// lfs f0,48(r3)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.u32 = GV32(ctx.r3.u32 + 48);
 	ctx.f0.f64 = double(temp.f32);
 	// stfs f0,64(r31)
@@ -911,7 +903,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x8227713C;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f12,168(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f12.u64 = GV64(ctx.r1.u32 + 168);
 	// fcfid f11,f12
 	ctx.f11.f64 = double(ctx.f12.s64);
@@ -935,7 +927,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// mr r5,r28
 	ctx.r5.u64 = ctx.r28.u64;
 	// fmr f1,f28
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f1.f64 = ctx.f28.f64;
 	// mr r3,r31
 	ctx.r3.u64 = ctx.r31.u64;
@@ -947,7 +939,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// mr r3,r31
 	ctx.r3.u64 = ctx.r31.u64;
 	// lfd f1,272(r31)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f1.u64 = GV64(ctx.r31.u32 + 272);
 	// fmr f2,f28
 	ctx.f2.f64 = ctx.f28.f64;
@@ -961,7 +953,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// lbz r11,4(r3)
 	ctx.r11.u64 = GV8(ctx.r3.u32 + 4);
 	// cmplwi cr6,r11,0
-	ctx.cr6.compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
 	// beq cr6,0x822771d0  (flag block runs when !cr6.eq)
 	if (!ctx.cr6.eq) {
 	// lis r11,-31950
@@ -971,7 +963,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// lwz r11,-27380(r11)
 	ctx.r11.u64 = GV32(ctx.r11.u32 + -27380);
 	// cmpw cr6,r11,r10
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, ctx.r10.s32, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, ctx.r10.s32, ctx.xer);
 	// bgt cr6,0x822771cc  (stb when cr6.gt)
 	bool do_stb = ctx.cr6.gt;
 	if (!ctx.cr6.gt) {
@@ -982,7 +974,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	// rlwinm r9,r10,0,25,25
 	ctx.r9.u64 = __builtin_rotateleft64(ctx.r10.u32 | (ctx.r10.u64 << 32), 0) & 0x40;
 	// cmplwi cr6,r9,0
-	ctx.cr6.compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
 	// beq cr6,0x822771cc  (stb when cr6.eq, else sub_8243A2C8)
 	if (ctx.cr6.eq) {
 		do_stb = true;
@@ -1008,7 +1000,7 @@ static __attribute__((noinline)) void process_frame_work(PPCContext& ctx, uint8_
 	ctx.lr = 0x822771E0;
 	query_guest_timebase(ctx, base);  // inlined GetTimebase_8221EB58: r11=timebase (retry if 0); [r3]=r11; r3=1
 	// lfd f12,184(r1)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	ctx.f12.u64 = GV64(ctx.r1.u32 + 184);
 	// fcfid f11,f12
 	ctx.f11.f64 = double(ctx.f12.s64);
@@ -1043,7 +1035,7 @@ static __attribute__((noinline)) void check_loop_backedge(PPCContext& ctx, uint8
 	// clrlwi r9,r3,24
 	ctx.r9.u64 = ctx.r3.u32 & 0xFF;
 	// cmplwi cr6,r9,0
-	ctx.cr6.compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
 }
 extern "C" void ProcessGameFrame_82276C30(PPCContext& __restrict ctx, uint8_t* base) {
 	REX_FUNC_PROLOGUE();

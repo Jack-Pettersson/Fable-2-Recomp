@@ -98,7 +98,7 @@ extern "C" void PollAndProcessOsNotifications_8229A9D8(PPCContext& __restrict ct
   ctx.r1.u32 = frame_sp;
 
   // --- Step 1: optional call (guest 0x821db798) when r4 bit 0 is clear ---
-  ctx.cr6.compare<i32>(static_cast<i32>(ctx.r4.u32 & 1), 0, ctx.xer);  // clrlwi r11,r4,31; cmpwi cr6,r11,0
+  ctx.cr6.Compare<i32>(static_cast<i32>(ctx.r4.u32 & 1), 0, ctx.xer);  // clrlwi r11,r4,31; cmpwi cr6,r11,0
   if ((ctx.r4.u32 & 1) == 0) {
     ctx.r3.u64 = gload32(0x83496BCC, base);      // lis r11,-31927; lwz r3,27596(r11)
     ctx.lr = 0x8229AA00;                         // bl 0x821db798
@@ -121,7 +121,7 @@ extern "C" void PollAndProcessOsNotifications_8229A9D8(PPCContext& __restrict ct
 
   const u32 handle = gload32(0x833197D0, base);   // lis r11,-31950; addi r10,r11,-26692; lwz r3,20(r10)
   ctx.r3.u64 = handle;
-  ctx.cr6.compare<u32>(handle, 0, ctx.xer);       // cmplwi cr6,r3,0
+  ctx.cr6.Compare<u32>(handle, 0, ctx.xer);       // cmplwi cr6,r3,0
   if (handle != 0) {
     ctx.r6.s64 = frame_sp + 84;                   // addi r6,r1,84
     ctx.r5.s64 = frame_sp + 80;                   // addi r5,r1,80
@@ -129,16 +129,16 @@ extern "C" void PollAndProcessOsNotifications_8229A9D8(PPCContext& __restrict ct
     ctx.lr = 0x8229AA24;                          // bl 0x832b222c
     __imp__XNotifyGetNext(ctx, base);
     const u32 status = ctx.r3.u32;                // (r3 = XNotifyGetNext return)
-    ctx.cr6.compare<i32>(static_cast<i32>(status), 0, ctx.xer);  // cmpwi cr6,r3,0
+    ctx.cr6.Compare<i32>(static_cast<i32>(status), 0, ctx.xer);  // cmpwi cr6,r3,0
     if (status != 0) {
       const u32 out_id = gload32(frame_sp + 80, base);  // lwz r11,80(r1)
-      ctx.cr6.compare<u32>(out_id, 11, ctx.xer);        // cmplwi cr6,r11,11
+      ctx.cr6.Compare<u32>(out_id, 11, ctx.xer);        // cmplwi cr6,r11,11
       if (out_id == 11) {
         dispatchNotifications();                  // bne cr6 -> guest 0x8229AA48
       } else {
         ctx.r10.s64 = 0x2000000;                  // lis r10,512
         ctx.r9.u64 = 0x2000007;                   // ori r9,r10,7
-        ctx.cr6.compare<u32>(out_id, 0x2000007, ctx.xer);  // cmplw cr6,r11,r9
+        ctx.cr6.Compare<u32>(out_id, 0x2000007, ctx.xer);  // cmplw cr6,r11,r9
         if (out_id == 0x2000007) {
           dispatchNotifications();                // (fall through to guest 0x8229AA48)
         }
@@ -149,7 +149,7 @@ extern "C" void PollAndProcessOsNotifications_8229A9D8(PPCContext& __restrict ct
   // --- Step 3: one-shot byte flag (guest 0x8229AA58) ---
   ctx.r31.s64 = static_cast<i64>(static_cast<i32>(0x834C0000));  // lis r31,-31924
   const u8 flag = gload8(0x834BE630, base);         // lbz r11,-6608(r31)
-  ctx.cr6.compare<u32>(flag, 0, ctx.xer);           // cmplwi cr6,r11,0
+  ctx.cr6.Compare<u32>(flag, 0, ctx.xer);           // cmplwi cr6,r11,0
   if (flag != 0) {
     ctx.r4.s64 = 0;                                 // li r4,0
     ctx.r3.s64 = 0;                                 // li r3,0

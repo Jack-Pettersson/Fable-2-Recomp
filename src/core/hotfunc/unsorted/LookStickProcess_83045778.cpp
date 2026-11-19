@@ -115,7 +115,7 @@ static void lookStickNormalize(PPCContext& ctx, uint8_t* base) {
 	ctx.lr = 0x830457A8;
 	VectorMathThunk_821F4D88(ctx, base);
 	// cmplwi r3,0
-	ctx.cr0.compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
+	ctx.cr0.Compare<uint32_t>(ctx.r3.u32, 0, ctx.xer);
 	// stw r3,56(r31)
 	handler.setCachedStick(ctx.r3.u32);
 }
@@ -184,7 +184,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 	// add r8,r8,r9
 	ctx.r8.u64 = ctx.r8.u64 + ctx.r9.u64;
 	// cmplw cr6,r8,r7
-	ctx.cr6.compare<uint32_t>(ctx.r8.u32, ctx.r7.u32, ctx.xer);
+	ctx.cr6.Compare<uint32_t>(ctx.r8.u32, ctx.r7.u32, ctx.xer);
 	// ble cr6,0x8304582c
 	if (ctx.cr6.gt) {
 		// lis r3,-32768 / ori r3,r3,16389  ->  kRetMagnitudeExceeded (0x80004005)
@@ -195,7 +195,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 		// li r26,0
 		ctx.r26.s64 = 0;  // r26 = 0: the clamp base for the per-entry accumulator
 		// cmplwi cr6,r10,0
-		ctx.cr6.compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
+		ctx.cr6.Compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
 		// mr r27,r26
 		ctx.r27.u64 = ctx.r26.u64;  // r27 = r26 (0): the per-entry counter, +1 each iteration
 		// add r29,r11,r9
@@ -213,7 +213,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// lwz r9,12(r3)
 				ctx.r9.u64 = GV32(ctx.r3.u32 + 12);
 				// cmplw cr6,r11,r9
-				ctx.cr6.compare<uint32_t>(ctx.r11.u32, ctx.r9.u32, ctx.xer);
+				ctx.cr6.Compare<uint32_t>(ctx.r11.u32, ctx.r9.u32, ctx.xer);
 				// bgt cr6,0x83045820
 				if (ctx.cr6.gt) {
 					// lis r3,-32768 / ori r3,r3,16389  ->  kRetMagnitudeExceeded (0x80004005)
@@ -271,12 +271,12 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// sth r9,104(r1)
 				stack.storeU16(kSlotAcc2, ctx.r9.u16);
 				// cmpw cr6,r8,r10
-				ctx.cr6.compare<int32_t>(ctx.r8.s32, ctx.r10.s32, ctx.xer);
+				ctx.cr6.Compare<int32_t>(ctx.r8.s32, ctx.r10.s32, ctx.xer);
 				// ble cr6,0x830458d8
 				if (ctx.cr6.gt) {
 					// subf. r11,r11,r10
 					ctx.r11.u64 = ctx.r10.u64 - ctx.r11.u64;
-					ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+					ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 					// bge 0x830458d4
 					if (ctx.cr0.lt)
 						// mr r11,r26
@@ -305,7 +305,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// lwzx r10,r28,r11
 				ctx.r10.u64 = GV32(ctx.r28.u32 + ctx.r11.u32);
 				// cmplwi cr6,r10,0
-				ctx.cr6.compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
+				ctx.cr6.Compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
 				// beq cr6,0x830457b4
 				if (ctx.cr6.eq) {
 					// lis r3,-32761 / ori r3,r3,14  ->  kRetEmptySlot (0x8007000E, empty slot)
@@ -322,7 +322,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// add r10,r10,r8
 				ctx.r10.u64 = ctx.r10.u64 + ctx.r8.u64;
 				// cmplwi r9,0
-				ctx.cr0.compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
+				ctx.cr0.Compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
 				// sth r10,102(r1)
 				stack.storeU16(kSlotAcc1, ctx.r10.u16);
 				// li r10,1
@@ -335,7 +335,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// lwzx r8,r28,r11
 				ctx.r8.u64 = GV32(ctx.r28.u32 + ctx.r11.u32);
 				// cmplwi cr6,r9,0
-				ctx.cr6.compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
+				ctx.cr6.Compare<uint32_t>(ctx.r9.u32, 0, ctx.xer);
 				// lhz r9,8(r30)
 				ctx.r9.u64 = GV16(ctx.r30.u32 + 8);
 				// lwz r7,112(r1)
@@ -382,7 +382,7 @@ static void lookStickDispatch(PPCContext& ctx, uint8_t* base) {
 				// rlwinm r11,r11,2,0,29
 				ctx.r11.u64 = __builtin_rotateleft64(ctx.r11.u32 | (ctx.r11.u64 << 32), 2) & 0xFFFFFFFC;
 				// cmplw cr6,r27,r9
-				ctx.cr6.compare<uint32_t>(ctx.r27.u32, ctx.r9.u32, ctx.xer);
+				ctx.cr6.Compare<uint32_t>(ctx.r27.u32, ctx.r9.u32, ctx.xer);
 				// add r25,r11,r25
 				ctx.r25.u64 = ctx.r11.u64 + ctx.r25.u64;
 				// blt cr6,0x83045848
@@ -448,7 +448,7 @@ extern "C" void LookStickProcess_83045778(PPCContext& __restrict ctx, uint8_t* b
 	// lhz r10,10(r11)
 	ctx.r10.u64 = GV16(ctx.r11.u32 + 10);
 	// cmplwi r10,0
-	ctx.cr0.compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
+	ctx.cr0.Compare<uint32_t>(ctx.r10.u32, 0, ctx.xer);
 	// beq 0x83045994
 	if (!ctx.cr0.eq) {
 		// --- Phase 1: RY is nonzero, normalize the right stick. ---

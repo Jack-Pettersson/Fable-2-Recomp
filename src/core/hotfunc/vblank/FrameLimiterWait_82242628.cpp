@@ -106,7 +106,7 @@ void ReadinessR9R11(PPCContext& ctx, uint8_t* base) {
   ctx.r9.u64 = ctx.r10.u64 - ctx.r30.u64;
   ctx.r11.u64 = REX_LOAD_U32(ctx.r11.u32);
   ctx.r11.u64 = ctx.r10.u64 - ctx.r11.u64;
-  ctx.cr6.compare<uint32_t>(ctx.r9.u32, ctx.r11.u32, ctx.xer);
+  ctx.cr6.Compare<uint32_t>(ctx.r9.u32, ctx.r11.u32, ctx.xer);
 }
 
 // Readiness test as at 0x82242680 (r8 keeps the counter, r11 the pointer):
@@ -118,24 +118,24 @@ void ReadinessR9R10(PPCContext& ctx, uint8_t* base) {
   ctx.r9.u64 = ctx.r10.u64 - ctx.r30.u64;
   ctx.r8.u64 = REX_LOAD_U32(ctx.r11.u32);
   ctx.r10.u64 = ctx.r10.u64 - ctx.r8.u64;
-  ctx.cr6.compare<uint32_t>(ctx.r9.u32, ctx.r10.u32, ctx.xer);
+  ctx.cr6.Compare<uint32_t>(ctx.r9.u32, ctx.r10.u32, ctx.xer);
 }
 
 // 0x8224265C-0x8224267C. Returns false when the gate word is set, which the
 // guest treats as "return now, without sub_82B9BEC8" (bne cr6,0x82242714).
 bool MaybeFastHelper(PPCContext& ctx, uint8_t* base) {
   ctx.r11.u64 = ctx.r6.u32 & 0xFF;  // clrlwi. r11,r6,24
-  ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+  ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
   if (ctx.cr0.eq == 0) {
     return true;  // bne 0x82242680
   }
   ctx.r11.u64 = ctx.r10.u32;  // rotlwi r11,r10,0 (r10 = deadline)
-  ctx.cr6.compare<uint32_t>(ctx.r30.u32, ctx.r11.u32, ctx.xer);
+  ctx.cr6.Compare<uint32_t>(ctx.r30.u32, ctx.r11.u32, ctx.xer);
   if (ctx.cr6.eq == 0) {
     return true;  // bne cr6,0x82242680
   }
   ctx.r11.u64 = REX_LOAD_U32(ctx.r31.u32 + kFastGateOffset);
-  ctx.cr6.compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
+  ctx.cr6.Compare<uint32_t>(ctx.r11.u32, 0, ctx.xer);
   if (ctx.cr6.eq == 0) {
     return false;  // bne cr6,0x82242714
   }
@@ -163,7 +163,7 @@ void BuildArgBlock(PPCContext& ctx, uint8_t* base) {
   ctx.r11.u64 = ctx.r9.u64 - ctx.r30.u64;
   ctx.r10.u64 = REX_LOAD_U32(ctx.r10.u32);
   ctx.r10.u64 = ctx.r9.u64 - ctx.r10.u64;
-  ctx.cr6.compare<uint32_t>(ctx.r11.u32, ctx.r10.u32, ctx.xer);
+  ctx.cr6.Compare<uint32_t>(ctx.r11.u32, ctx.r10.u32, ctx.xer);
 }
 
 // CPU spin-wait hint: YieldProcessor on Windows, the same PAUSE (x86) or
@@ -227,7 +227,7 @@ extern "C" void FrameLimiterWait_82242628(PPCContext& __restrict ctx, uint8_t* b
     ctx.r3.s64 = ctx.r1.s64 + kArgBlock;
     ctx.lr = kRetProgressCheck;
     GpuProgressCheck_82B9BF90(ctx, base);
-    ctx.cr0.compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
+    ctx.cr0.Compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
     if (ctx.cr0.eq != 0) {
       break;
     }

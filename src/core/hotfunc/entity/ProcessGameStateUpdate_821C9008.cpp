@@ -160,7 +160,7 @@ extern "C" void ProcessGameStateUpdate_821C9008(PPCContext& __restrict ctx, uint
   ctx.r6.u64 = 1;                               // li r6,1
   const u32 a4 = gload32(self + 156, base);     // lwz r4,156(r31)
   const u32 a3 = gload32(self + 124, base);     // lwz r3,124(r31)
-  ctx.fpscr.disableFlushMode();                 // lfs f1: match generated fpscr side effect
+  ctx.fpscr.DisableFlushMode();                 // lfs f1: match generated fpscr side effect
   PPCRegister ftemp{};
   ftemp.u32 = gload32(ctx.r5.u32 - 27456, base); // lfs f1,-27456(r5) -> 0x820994C0
   ctx.f1.f64 = (double)ftemp.f32;

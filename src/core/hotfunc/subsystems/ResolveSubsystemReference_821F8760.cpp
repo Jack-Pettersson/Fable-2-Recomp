@@ -86,7 +86,7 @@ extern "C" void ResolveSubsystemReference_821F8760(PPCContext& __restrict ctx, u
   const u32 node =
       gload32(gload32(gload32(0x83490000 + 26912, base) + 12, base) + 140, base);
   const u8 byte52 = gload8(node + 52, base);
-  ctx.cr6.compare<u32>(byte52, 0, ctx.xer);      // cmplwi cr6,r9,0
+  ctx.cr6.Compare<u32>(byte52, 0, ctx.xer);      // cmplwi cr6,r9,0
 
   // Path selection (0x821f8784-0x821f87b8): fast (path A) iff byte52 != 0
   // (re-tested through `clrlwi` - the recompiler keeps the low 8 bits - so
@@ -97,11 +97,11 @@ extern "C" void ResolveSubsystemReference_821F8760(PPCContext& __restrict ctx, u
       ctx.cr6.eq == false && (byte52 & 0xFF) != 0;  // beq / clrlwi / beq -> slow
   if (fast_path) {
     const u8 byte54 = gload8(node + 54, base);      // lbz r11,54(r11)
-    ctx.cr6.compare<u32>(byte54, 0, ctx.xer);       // cmplwi cr6,r11,0
+    ctx.cr6.Compare<u32>(byte54, 0, ctx.xer);       // cmplwi cr6,r11,0
     fast_path = ctx.cr6.eq == false;                // bne -> fast (r11 = 1)
   }
   const u32 pick = fast_path ? 1u : 0u;             // li r11,1 / li r11,0
-  ctx.cr6.compare<u32>(pick & 0xFF, 0, ctx.xer);    // clrlwi r11,r11,24; cmplwi
+  ctx.cr6.Compare<u32>(pick & 0xFF, 0, ctx.xer);    // clrlwi r11,r11,24; cmplwi
 
   // --- Path A (fast, 0x821f87bc): li r4,2; mr r3,r5; bl 0x822641f0 ---
   bool fast_resolved = false;
@@ -110,7 +110,7 @@ extern "C" void ResolveSubsystemReference_821F8760(PPCContext& __restrict ctx, u
     ctx.r3.u64 = ctx.r5.u64;
     ctx.lr = 0x821F87C4;
     ProcessAndProcessAndProcess1124_822641F0(ctx, base);
-    ctx.cr6.compare<u32>(ctx.r3.u32, 0, ctx.xer);   // cmplwi cr6,r3,0
+    ctx.cr6.Compare<u32>(ctx.r3.u32, 0, ctx.xer);   // cmplwi cr6,r3,0
     if (ctx.cr6.eq == false) {
       // 0x821f87cc: lwz r3,4(r3) -> epilogue.
       ctx.r3.u64 = gload32(ctx.r3.u32 + 4, base);
@@ -125,7 +125,7 @@ extern "C" void ResolveSubsystemReference_821F8760(PPCContext& __restrict ctx, u
     ctx.r3.u64 = ctx.r5.u64;
     ctx.lr = 0x821F87EC;
     ProcessAndProcessAndProcess1124_822641F0(ctx, base);
-    ctx.cr6.compare<u32>(ctx.r3.u32, 0, ctx.xer);   // cmplwi cr6,r3,0
+    ctx.cr6.Compare<u32>(ctx.r3.u32, 0, ctx.xer);   // cmplwi cr6,r3,0
     if (ctx.cr6.eq == false) {
       // bne -> 0x821f87cc: lwz r3,4(r3).
       ctx.r3.u64 = gload32(ctx.r3.u32 + 4, base);

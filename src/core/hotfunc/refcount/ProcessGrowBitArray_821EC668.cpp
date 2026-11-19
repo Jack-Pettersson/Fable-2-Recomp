@@ -88,11 +88,6 @@ HOTFUNC_ALWAYS_INLINE void gstore64(u32 addr, u8* base, u64 v) {
 // Cached reference to the SDK's global critical region mutex: same mutex and
 // same lock/unlock order as REX_ENTER/LEAVE_GLOBAL_LOCK, without the
 // per-use DLL call to global_critical_region::mutex().
-inline std::recursive_mutex& hotfunc_gcr_mutex() {
-  static thread_local std::recursive_mutex& cached =
-      rex::thread::global_critical_region::mutex();
-  return cached;
-}
 
 }  // namespace
 
@@ -117,13 +112,13 @@ extern "C" void ProcessGrowBitArray_821EC668(PPCContext& __restrict ctx, uint8_t
   const u32 src = ctx.r4.u32;
 
   const u32 dst_ref = gload32(dst, base);    // lwz r11,0(r31)
-  ctx.cr6.compare<u32>(dst_ref, 0, ctx.xer); // cmplwi cr6,r11,0
+  ctx.cr6.Compare<u32>(dst_ref, 0, ctx.xer); // cmplwi cr6,r11,0
   if (dst_ref != 0) {
     // dst is already set: bump it, then grow from src.
     ctx.lr = 0x821EC694;                     // bl 0x8222e840 (r3 = dst, unchanged)
     AtomicIncrement5_8222E840(ctx, base);
     const u32 src_ref = gload32(src, base);  // lwz r11,0(r30)
-    ctx.cr6.compare<u32>(src_ref, 0, ctx.xer); // cmplwi cr6,r11,0
+    ctx.cr6.Compare<u32>(src_ref, 0, ctx.xer); // cmplwi cr6,r11,0
     if (src_ref != 0) {
       // (guest 0x821EC6B4) grow from the source's pointee.
       ctx.r4.u64 = gload32(src_ref, base);   // lwz r4,0(r11)
@@ -139,10 +134,10 @@ extern "C" void ProcessGrowBitArray_821EC668(PPCContext& __restrict ctx, uint8_t
     }
   } else {
     // dst is empty: copy src's reference and bump its refcount. (guest 0x821EC6C4)
-    ctx.cr6.compare<u32>(src, dst, ctx.xer); // cmplw cr6,r30,r31
+    ctx.cr6.Compare<u32>(src, dst, ctx.xer); // cmplw cr6,r30,r31
     if (src != dst) {
       const u32 src_ref = gload32(src, base); // lwz r11,0(r30)
-      ctx.cr6.compare<u32>(src_ref, 0, ctx.xer); // cmplwi cr6,r11,0
+      ctx.cr6.Compare<u32>(src_ref, 0, ctx.xer); // cmplwi cr6,r11,0
       if (src_ref != 0) {
         gstore32(dst, base, src_ref);        // stw r11,0(r31)
         // Atomically increment the copied object's refcount (*src + 12) under
@@ -150,7 +145,6 @@ extern "C" void ProcessGrowBitArray_821EC668(PPCContext& __restrict ctx, uint8_t
         // and note 2 (retry kept as a do-loop).
         u32* refcount = reinterpret_cast<u32*>(gaddr(src_ref + 12, base)); // addi r11,r11,12
         do {
-          hotfunc_gcr_mutex().lock(); ppc_global_lock_count_().fetch_add(1);
           ctx.reserved.u32 = *refcount;      // lwarx r10,0,r11
           ctx.r10.u64 = __builtin_bswap32(ctx.reserved.u32);
           ctx.r10.s64 += 1;                  // addi r10,r10,1
@@ -159,8 +153,6 @@ extern "C" void ProcessGrowBitArray_821EC668(PPCContext& __restrict ctx, uint8_t
           ctx.cr0.eq = __sync_bool_compare_and_swap(
               refcount, ctx.reserved.s32, __builtin_bswap32(ctx.r10.s32));
           ctx.cr0.so = ctx.xer.so;
-          { auto old_ = ppc_global_lock_count_().fetch_sub(1); assert(old_ >= 1); }
-          hotfunc_gcr_mutex().unlock();
         } while (!ctx.cr0.eq);               // bne 0x821ec6e0
       }
     }

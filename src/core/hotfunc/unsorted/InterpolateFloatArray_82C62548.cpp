@@ -12,11 +12,11 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// lwz r11,8(r3)
 	ctx.r11.u64 = REX_LOAD_U32(ctx.r3.u32 + 8);
 	// cmpwi cr6,r11,0
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 	// lis r11,-32256
 	ctx.r11.s64 = -2113929216;
 	// lfs f0,3084(r11)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.u32 = REX_LOAD_U32(ctx.r11.u32 + 3084);
 	ctx.f0.f64 = double(temp.f32);
 	// ble cr6,0x82c6266c
@@ -26,7 +26,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 		// lwz r5,40(r3)
 		ctx.r5.u64 = REX_LOAD_U32(ctx.r3.u32 + 40);
 		// cmpw cr6,r5,r10
-		ctx.cr6.compare<int32_t>(ctx.r5.s32, ctx.r10.s32, ctx.xer);
+		ctx.cr6.Compare<int32_t>(ctx.r5.s32, ctx.r10.s32, ctx.xer);
 		// bge cr6,0x82c626bc
 		if (ctx.cr6.lt) {
 			// rotlwi r11,r10,0
@@ -49,13 +49,13 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			ctx.r10.u64 = ctx.r10.u64 - ctx.r11.u64;
 			while (true) {
 				// lfs f13,0(r9)
-				ctx.fpscr.disableFlushMode();
+				ctx.fpscr.DisableFlushMode();
 				temp.u32 = REX_LOAD_U32(ctx.r9.u32 + 0);
 				ctx.f13.f64 = double(temp.f32);
 				// addic. r11,r11,-1
 				ctx.xer.ca = ctx.r11.u32 > 0;
 				ctx.r11.s64 = ctx.r11.s64 + -1;
-				ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+				ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 				// lfs f12,0(r8)
 				temp.u32 = REX_LOAD_U32(ctx.r8.u32 + 0);
 				ctx.f12.f64 = double(temp.f32);
@@ -71,7 +71,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			}
 		}
 		// cmpwi cr6,r5,0
-		ctx.cr6.compare<int32_t>(ctx.r5.s32, 0, ctx.xer);
+		ctx.cr6.Compare<int32_t>(ctx.r5.s32, 0, ctx.xer);
 		// ble cr6,0x82c626f4
 		if (ctx.cr6.gt) {
 			// lwz r8,16(r3)
@@ -86,13 +86,13 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			ctx.r10.u64 = ctx.r10.u64 + ctx.r8.u64;
 			while (true) {
 				// lfs f13,0(r10)
-				ctx.fpscr.disableFlushMode();
+				ctx.fpscr.DisableFlushMode();
 				temp.u32 = REX_LOAD_U32(ctx.r10.u32 + 0);
 				ctx.f13.f64 = double(temp.f32);
 				// addic. r11,r11,-1
 				ctx.xer.ca = ctx.r11.u32 > 0;
 				ctx.r11.s64 = ctx.r11.s64 + -1;
-				ctx.cr0.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+				ctx.cr0.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 				// lfs f12,0(r9)
 				temp.u32 = REX_LOAD_U32(ctx.r9.u32 + 0);
 				ctx.f12.f64 = double(temp.f32);
@@ -112,7 +112,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 		// rlwinm r10,r5,2,0,29
 		ctx.r10.u64 = __builtin_rotateleft64(ctx.r5.u32 | (ctx.r5.u64 << 32), 2) & 0xFFFFFFFC;
 		// stfsx f1,r10,r11
-		ctx.fpscr.disableFlushMode();
+		ctx.fpscr.DisableFlushMode();
 		temp.f32 = float(ctx.f1.f64);
 		REX_STORE_U32(ctx.r10.u32 + ctx.r11.u32, temp.u32);
 		// lwz r9,36(r3)
@@ -124,7 +124,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 		// stw r11,40(r3)
 		REX_STORE_U32(ctx.r3.u32 + 40, ctx.r11.u32);
 		// cmpw cr6,r11,r9
-		ctx.cr6.compare<int32_t>(ctx.r11.s32, ctx.r9.s32, ctx.xer);
+		ctx.cr6.Compare<int32_t>(ctx.r11.s32, ctx.r9.s32, ctx.xer);
 		// blt cr6,0x82c62720
 		if (!ctx.cr6.lt) {
 			// li r11,0
@@ -135,7 +135,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 		// lwz r11,16(r3)
 		ctx.r11.u64 = REX_LOAD_U32(ctx.r3.u32 + 16);
 		// lfs f13,0(r11)
-		ctx.fpscr.disableFlushMode();
+		ctx.fpscr.DisableFlushMode();
 		temp.u32 = REX_LOAD_U32(ctx.r11.u32 + 0);
 		ctx.f13.f64 = double(temp.f32);
 		// fmadds f1,f13,f1,f0
@@ -148,7 +148,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// lwz r10,40(r3)
 	ctx.r10.u64 = REX_LOAD_U32(ctx.r3.u32 + 40);
 	// cmpw cr6,r10,r7
-	ctx.cr6.compare<int32_t>(ctx.r10.s32, ctx.r7.s32, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r10.s32, ctx.r7.s32, ctx.xer);
 	// bge cr6,0x82c625b8
 	if (ctx.cr6.lt) {
 		// rlwinm r11,r7,2,0,29
@@ -169,7 +169,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			// lwz r5,12(r3)
 			ctx.r5.u64 = REX_LOAD_U32(ctx.r3.u32 + 12);
 			// lfsx f13,r6,r11
-			ctx.fpscr.disableFlushMode();
+			ctx.fpscr.DisableFlushMode();
 			temp.u32 = REX_LOAD_U32(ctx.r6.u32 + ctx.r11.u32);
 			ctx.f13.f64 = double(temp.f32);
 			// addi r11,r11,-4
@@ -192,7 +192,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			// addi r9,r9,4
 			ctx.r9.s64 = ctx.r9.s64 + 4;
 			// cmpw cr6,r10,r4
-			ctx.cr6.compare<int32_t>(ctx.r10.s32, ctx.r4.s32, ctx.xer);
+			ctx.cr6.Compare<int32_t>(ctx.r10.s32, ctx.r4.s32, ctx.xer);
 			// blt cr6,0x82c62574
 			if (ctx.cr6.lt) continue;
 			break;
@@ -203,7 +203,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// li r8,0
 	ctx.r8.s64 = 0;
 	// cmpwi cr6,r11,0
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
 	// ble cr6,0x82c62610
 	if (ctx.cr6.gt) {
 		// rlwinm r11,r7,2,0,29
@@ -222,7 +222,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			// lwz r6,12(r3)
 			ctx.r6.u64 = REX_LOAD_U32(ctx.r3.u32 + 12);
 			// lfsx f13,r7,r11
-			ctx.fpscr.disableFlushMode();
+			ctx.fpscr.DisableFlushMode();
 			temp.u32 = REX_LOAD_U32(ctx.r7.u32 + ctx.r11.u32);
 			ctx.f13.f64 = double(temp.f32);
 			// addi r11,r11,-4
@@ -245,7 +245,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 			// addi r10,r10,4
 			ctx.r10.s64 = ctx.r10.s64 + 4;
 			// cmpw cr6,r8,r5
-			ctx.cr6.compare<int32_t>(ctx.r8.s32, ctx.r5.s32, ctx.xer);
+			ctx.cr6.Compare<int32_t>(ctx.r8.s32, ctx.r5.s32, ctx.xer);
 			// blt cr6,0x82c625d0
 			if (ctx.cr6.lt) continue;
 			break;
@@ -258,7 +258,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// rlwinm r9,r11,2,0,29
 	ctx.r9.u64 = __builtin_rotateleft64(ctx.r11.u32 | (ctx.r11.u64 << 32), 2) & 0xFFFFFFFC;
 	// stfsx f1,r9,r10
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.f32 = float(ctx.f1.f64);
 	REX_STORE_U32(ctx.r9.u32 + ctx.r10.u32, temp.u32);
 	// lwz r8,36(r3)
@@ -270,7 +270,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// stw r11,40(r3)
 	REX_STORE_U32(ctx.r3.u32 + 40, ctx.r11.u32);
 	// cmpw cr6,r11,r8
-	ctx.cr6.compare<int32_t>(ctx.r11.s32, ctx.r8.s32, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r11.s32, ctx.r8.s32, ctx.xer);
 	// blt cr6,0x82c62640
 	if (!ctx.cr6.lt) {
 		// li r11,0
@@ -283,7 +283,7 @@ extern "C" void InterpolateFloatArray_82C62548(PPCContext& __restrict ctx, uint8
 	// lwz r10,20(r3)
 	ctx.r10.u64 = REX_LOAD_U32(ctx.r3.u32 + 20);
 	// lfs f13,0(r11)
-	ctx.fpscr.disableFlushMode();
+	ctx.fpscr.DisableFlushMode();
 	temp.u32 = REX_LOAD_U32(ctx.r11.u32 + 0);
 	ctx.f13.f64 = double(temp.f32);
 	// lfs f12,0(r10)

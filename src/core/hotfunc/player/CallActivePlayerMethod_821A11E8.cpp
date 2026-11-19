@@ -100,11 +100,11 @@ extern "C" void CallActivePlayerMethod_821A11E8(PPCContext& __restrict ctx, uint
 
   // Gate 1: global enable flag (byte at 0x8331930E) must be non-zero.
   const u8 enabled = gload8(0x8331930E, base);
-  ctx.cr6.compare<u32>(enabled, 0, ctx.xer);  // cmplwi cr6,r10,0
+  ctx.cr6.Compare<u32>(enabled, 0, ctx.xer);  // cmplwi cr6,r10,0
   if (enabled != 0) {
     // Gate 2: player->b101 must be >= 1 (cmplwi cr6,r11,1; blt).
     const u8 state = gload8(player + 101, base);
-    ctx.cr6.compare<u32>(state, 1, ctx.xer);
+    ctx.cr6.Compare<u32>(state, 1, ctx.xer);
     if (state >= 1) {
       // Walk the global context chain rooted at *(u32*)0x83496920.
       const u32 root = gload32(0x83496920, base);
@@ -116,7 +116,7 @@ extern "C" void CallActivePlayerMethod_821A11E8(PPCContext& __restrict ctx, uint
       // Corruption check (cmplw cr6,r11,r10; twi 31,r0,22 x2): `next` must not
       // be `node` itself. The recompiler models twi as a non-fatal log and
       // falls through, so we do the same (twice, as disassembled).
-      ctx.cr6.compare<u32>(next, node, ctx.xer);
+      ctx.cr6.Compare<u32>(next, node, ctx.xer);
       if (next == node) {
         ppc_trap(ctx, base, 22);
         ppc_trap(ctx, base, 22);
@@ -124,7 +124,7 @@ extern "C" void CallActivePlayerMethod_821A11E8(PPCContext& __restrict ctx, uint
       // Dispatch: target = next->p8; call target->vtable[1](target).
       const u32 result = vcall(ctx, base, gload32(next + 8, base), 4, 0x821A125C);
       // cmpwi cr6,r3,7: the follow-up only runs when the method did not report 7.
-      ctx.cr6.compare<i32>(static_cast<i32>(result), 7, ctx.xer);
+      ctx.cr6.Compare<i32>(static_cast<i32>(result), 7, ctx.xer);
       if (result != 7) {
         // subject = player->p16; call subject->vtable[10](subject, 1), then
         // mark player->b100 = 1 (li r9,1; stb r9,100(r31)).

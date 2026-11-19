@@ -70,15 +70,15 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 	ctx.lr = 0x821850B8;                   // bl 0x832b222c
 	__imp__XNotifyGetNext(ctx, base);
 	// cmpwi cr6,r3,0: the host returns 1 when a notification was dequeued.
-	ctx.cr6.compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
+	ctx.cr6.Compare<int32_t>(ctx.r3.s32, 0, ctx.xer);
 
 	if (!ctx.cr6.eq) {
 		const u32 type = GV32(frame_sp + 80);            // lwz r11,80(r1)
-		ctx.cr6.compare<u32>(type, 11, ctx.xer);         // cmplwi cr6,r11,11
+		ctx.cr6.Compare<u32>(type, 11, ctx.xer);         // cmplwi cr6,r11,11
 
 		if (ctx.cr6.gt) {
 			// type > 11
-			ctx.cr6.compare<u32>(type, 18, ctx.xer);     // cmplwi cr6,r11,18
+			ctx.cr6.Compare<u32>(type, 18, ctx.xer);     // cmplwi cr6,r11,18
 			if (ctx.cr6.eq) {
 				// type == 18
 				ctx.r3.u64 = GV32(self + 156);           // lwz r3,156(r31)
@@ -93,7 +93,7 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 				SV32(target + 12, out);                   // stw r9,12(r8)
 			} else {
 				// lis r10,512; ori r9,r10,7; cmplw cr6,r11,r9  =>  type == 0x02000007
-				ctx.cr6.compare<u32>(type, 0x02000007, ctx.xer);
+				ctx.cr6.Compare<u32>(type, 0x02000007, ctx.xer);
 				if (ctx.cr6.eq) {
 					ctx.lr = 0x82185170;                  // bl 0x82368b20
 					sub_82368B20(ctx, base);
@@ -113,7 +113,7 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 			ctx.lr = 0x82185134;                      // bl 0x8236a530
 			ProcessAndSearchAndProcess_8236A530(ctx, base);
 			const u32 found = GV32(frame_sp + 88);    // lwz r3,88(r1)
-			ctx.cr6.compare<u32>(found, 0, ctx.xer);  // cmplwi cr6,r3,0
+			ctx.cr6.Compare<u32>(found, 0, ctx.xer);  // cmplwi cr6,r3,0
 			if (!ctx.cr6.eq) {
 				// Virtual call found->vtable[2](found); guest return 0x82185150.
 				ctx.r3.u64 = found;
@@ -122,7 +122,7 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 				REX_CALL_INDIRECT_FUNC(ctx.ctr.u32);
 			}
 		} else {
-			ctx.cr6.compare<u32>(type, 9, ctx.xer);   // cmplwi cr6,r11,9
+			ctx.cr6.Compare<u32>(type, 9, ctx.xer);   // cmplwi cr6,r11,9
 			if (ctx.cr6.eq) {
 				// type == 9
 				const u32 node = GV32(self + 128);     // lwz r11,128(r31)
@@ -136,7 +136,7 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 				SV8(target + 21, (u8)flag);            // stb r6,21(r8)
 				SV32(target + 16, ctx.r30.u32);        // stw r30,16(r8) (r30 == 0)
 			} else {
-				ctx.cr6.compare<u32>(type, 10, ctx.xer); // cmplwi cr6,r11,10
+				ctx.cr6.Compare<u32>(type, 10, ctx.xer); // cmplwi cr6,r11,10
 				if (ctx.cr6.eq) {
 					// type == 10
 					ctx.r3.u64 = self;                 // mr r3,r31
@@ -149,29 +149,29 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 
 	// --- Post-dispatch block (guest 0x8218519C): every path lands here ---
 	const u8 gate = GV8(self + 260);              // lbz r11,260(r31)
-	ctx.cr6.compare<u32>(gate, 0, ctx.xer);       // cmplwi cr6,r11,0
+	ctx.cr6.Compare<u32>(gate, 0, ctx.xer);       // cmplwi cr6,r11,0
 	if (!ctx.cr6.eq) {
-		ctx.fpscr.disableFlushMode();             // (lfd f13,232 / lfd f0,3376)
+		ctx.fpscr.DisableFlushMode();             // (lfd f13,232 / lfd f0,3376)
 		PPCRegister t;
 		t.u64 = GV64(self + 232);                 // lfd f13,232(r31)
 		const double f13 = t.f64;
 		t.u64 = GV64(0x82000D30);                 // lfd f0,3376(r11) (lis r11,-32256)
 		const double f0 = t.f64;
-		ctx.cr6.compare(f13, f0);                 // fcmpu cr6,f13,f0
+		ctx.cr6.Compare(f13, f0);                 // fcmpu cr6,f13,f0
 		if (ctx.cr6.gt) {
 			ctx.lr = 0x821851C0;                  // bl 0x8221eb78
 			ProcessAndProcessAndProcess1100_8221EB78(ctx, base);
-			ctx.fpscr.disableFlushMode();         // (lfd f0,232 / lfd f0,-40)
+			ctx.fpscr.DisableFlushMode();         // (lfd f0,232 / lfd f0,-40)
 			t.u64 = GV64(self + 232);             // lfd f0,232(r31)
 			const double f13b = ctx.f1.f64 - t.f64; // fsub f13,f1,f0
 			t.u64 = GV64(0x8209FFD8);             // lfd f0,-40(r11) (lis r11,-32246)
-			ctx.cr6.compare(f13b, t.f64);         // fcmpu cr6,f13,f0
+			ctx.cr6.Compare(f13b, t.f64);         // fcmpu cr6,f13,f0
 			if (ctx.cr6.gt) {
 				const u8 b258 = GV8(self + 258);   // lbz r11,258(r31)
-				ctx.cr6.compare<u32>(b258, 0, ctx.xer);
+				ctx.cr6.Compare<u32>(b258, 0, ctx.xer);
 				if (ctx.cr6.eq) {
 					const u8 b259 = GV8(self + 259); // loc_821851F0: lbz r11,259(r31)
-					ctx.cr6.compare<u32>(b259, 0, ctx.xer);
+					ctx.cr6.Compare<u32>(b259, 0, ctx.xer);
 					if (!ctx.cr6.eq) {
 						ctx.r3.u64 = self;         // mr r3,r31
 						ctx.lr = 0x82185204;       // bl 0x8233c600
@@ -183,7 +183,7 @@ extern "C" void DispatchOsNotifications_82185080(PPCContext& __restrict ctx, uin
 					sub_8233C480(ctx, base);
 				}
 				// Reset the time field (lis r11,-32256; lfd f0,3240(r11); stfd f0,232(r31)).
-				ctx.fpscr.disableFlushMode();
+				ctx.fpscr.DisableFlushMode();
 				SV64(self + 232, GV64(0x82000CA8));
 			}
 		}

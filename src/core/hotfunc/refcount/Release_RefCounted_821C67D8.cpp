@@ -91,11 +91,6 @@ HOTFUNC_ALWAYS_INLINE void gstore64(u32 addr, u8* base, u64 v) {
 // Cached reference to the SDK's global critical region mutex: same mutex and
 // same lock/unlock order as REX_ENTER/LEAVE_GLOBAL_LOCK, without the
 // per-use DLL call to global_critical_region::mutex().
-inline std::recursive_mutex& hotfunc_gcr_mutex() {
-  static thread_local std::recursive_mutex& cached =
-      rex::thread::global_critical_region::mutex();
-  return cached;
-}
 
 }  // namespace
 
@@ -118,14 +113,13 @@ extern "C" void Release_RefCounted_821C67D8(PPCContext& __restrict ctx, uint8_t*
   const u32 slot = ctx.r3.u32;
 
   const u32 obj = gload32(slot, base);       // lwz r11,0(r30)
-  ctx.cr6.compare<u32>(obj, 0, ctx.xer);     // cmplwi cr6,r11,0
+  ctx.cr6.Compare<u32>(obj, 0, ctx.xer);     // cmplwi cr6,r11,0
   if (obj != 0) {                            // beq cr6 -> epilogue
     // Decrement the object's refcount (obj + 12) under the global critical
     // region. See header note 1 (MSR/fences dropped) and note 2 (retry kept as
     // a do-loop).
     u32* refcount = reinterpret_cast<u32*>(gaddr(obj + 12, base)); // addi r11,r11,12
     do {
-      hotfunc_gcr_mutex().lock(); ppc_global_lock_count_().fetch_add(1);
       ctx.reserved.u32 = *refcount;          // lwarx r10,0,r11
       ctx.r10.u64 = __builtin_bswap32(ctx.reserved.u32);
       ctx.r10.s64 -= 1;                      // addi r10,r10,-1
@@ -134,16 +128,14 @@ extern "C" void Release_RefCounted_821C67D8(PPCContext& __restrict ctx, uint8_t*
       ctx.cr0.eq = __sync_bool_compare_and_swap(
           refcount, ctx.reserved.s32, __builtin_bswap32(ctx.r10.s32));
       ctx.cr0.so = ctx.xer.so;
-      { auto old_ = ppc_global_lock_count_().fetch_sub(1); assert(old_ >= 1); }
-      hotfunc_gcr_mutex().unlock();
     } while (!ctx.cr0.eq);                   // bne 0x821c6800
 
     // mr r11,r10; cmpwi cr6,r11,0: this is the last reference?
     ctx.r11.u64 = ctx.r10.u64;
-    ctx.cr6.compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
+    ctx.cr6.Compare<int32_t>(ctx.r11.s32, 0, ctx.xer);
     if (!ctx.cr6.gt) {                       // bgt cr6 -> zero_out (skip dispose)
       const u32 obj2 = gload32(slot, base);  // lwz r31,0(r30) (reload)
-      ctx.cr6.compare<u32>(obj2, 0, ctx.xer); // cmplwi cr6,r31,0
+      ctx.cr6.Compare<u32>(obj2, 0, ctx.xer); // cmplwi cr6,r31,0
       ctx.r31.u64 = obj2;                    // r31 = obj2 (lwz zero-extends)
       if (obj2 != 0) {                       // beq cr6 -> zero_out (skip dispose)
         ctx.r3.u64 = obj2;                   // mr r3,r31

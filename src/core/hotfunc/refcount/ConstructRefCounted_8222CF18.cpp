@@ -95,11 +95,6 @@ HOTFUNC_ALWAYS_INLINE void gstore64(u32 addr, u8* base, u64 v) {
 // Cached reference to the SDK's global critical region mutex: same mutex and
 // same lock/unlock order as REX_ENTER/LEAVE_GLOBAL_LOCK, without the
 // per-use DLL call to global_critical_region::mutex().
-inline std::recursive_mutex& hotfunc_gcr_mutex() {
-  static thread_local std::recursive_mutex& cached =
-      rex::thread::global_critical_region::mutex();
-  return cached;
-}
 
 // Global live-object count (guest word at 0x83496EB8; lis r9,-31927 =
 // 0x83490000, addi r8,r9,28344 = 0x83496EB8). Incremented here (construct),
@@ -138,11 +133,14 @@ extern "C" void ConstructRefCounted_8222CF18(PPCContext& __restrict ctx, uint8_t
   // dropped - unobservable) and note 2 (lwarx/stwcx retry reduced to a plain
   // RMW, safe because construct+destruct are the only writers and both hold
   // this same lock).
-  hotfunc_gcr_mutex().lock();
-  ppc_global_lock_count_().fetch_add(1);
-  gstore32(kLiveObjectCountAddr, base, gload32(kLiveObjectCountAddr, base) + 1);
-  { auto old_ = ppc_global_lock_count_().fetch_sub(1); assert(old_ >= 1); }
-  hotfunc_gcr_mutex().unlock();
+  // Sync trial: upstream has no global lock (REX_ENTER_GLOBAL_LOCK only flips the
+  // MSR bit), so the destructor's stwcx. is a bare CAS; increment with a CAS too.
+  {
+    u32* live = reinterpret_cast<u32*>(gaddr(kLiveObjectCountAddr, base));
+    u32 old_be = __atomic_load_n(live, __ATOMIC_RELAXED);
+    while (!__sync_bool_compare_and_swap(live, old_be, __builtin_bswap32(__builtin_bswap32(old_be) + 1)))
+      old_be = __atomic_load_n(live, __ATOMIC_RELAXED);
+  }
   // stwcx. success (always, under the lock): cr0 = {0, 0, 1, xer.so}.
   ctx.cr0.lt = 0;
   ctx.cr0.gt = 0;
@@ -150,10 +148,10 @@ extern "C" void ConstructRefCounted_8222CF18(PPCContext& __restrict ctx, uint8_t
   ctx.cr0.so = ctx.xer.so;
 
   // if (src && *src): r30 = AllocateString(obj, src)
-  ctx.cr6.compare<u32>(src, 0, ctx.xer);  // cmplwi cr6,r4,0
+  ctx.cr6.Compare<u32>(src, 0, ctx.xer);  // cmplwi cr6,r4,0
   if (src != 0) {
     const u8 first = gload8(src, base);
-    ctx.cr6.compare<u32>(first, 0, ctx.xer);  // cmplwi cr6,r11,0
+    ctx.cr6.Compare<u32>(first, 0, ctx.xer);  // cmplwi cr6,r11,0
     if (first != 0) {
       ctx.r3.u64 = obj;
       ctx.lr = 0x8222CF78;
@@ -164,7 +162,7 @@ extern "C" void ConstructRefCounted_8222CF18(PPCContext& __restrict ctx, uint8_t
 
   // if (obj->ref): Release_RefCounted(obj)
   const u32 old_ref = gload32(obj, base);  // lwz r11,0(r31)
-  ctx.cr6.compare<u32>(old_ref, 0, ctx.xer);
+  ctx.cr6.Compare<u32>(old_ref, 0, ctx.xer);
   if (old_ref != 0) {
     ctx.r3.u64 = obj;
     ctx.lr = 0x8222CF90;
@@ -172,7 +170,7 @@ extern "C" void ConstructRefCounted_8222CF18(PPCContext& __restrict ctx, uint8_t
   }
 
   // if (r30): obj->ref = r30
-  ctx.cr6.compare<u32>(ctx.r30.u32, 0, ctx.xer);
+  ctx.cr6.Compare<u32>(ctx.r30.u32, 0, ctx.xer);
   if (ctx.r30.u32 != 0) {
     gstore32(obj, base, ctx.r30.u32);
   }

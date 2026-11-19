@@ -100,7 +100,7 @@ extern "C" void DispatchFrameCallback_821A6010(PPCContext& __restrict ctx, uint8
   ctx.r12.u64 = ctx.lr;                 // mflr r12
   ctx.lr = 0x821A6018;                  // bl 0x82ca2bec
   __savegprlr_29(ctx, base);
-  ctx.fpscr.disableFlushMode();         // stfd f31,-40(r1): protect callee-saved f31
+  ctx.fpscr.DisableFlushMode();         // stfd f31,-40(r1): protect callee-saved f31
   gstore64(entry_sp - 40, base, ctx.f31.u64);
   gstore32(frame_sp, base, entry_sp);   // stwu r1,-128(r1)
   ctx.r1.u32 = frame_sp;
@@ -109,23 +109,23 @@ extern "C" void DispatchFrameCallback_821A6010(PPCContext& __restrict ctx, uint8
   const u32 table = ctx.r3.u32;
   // lwz r11,128(r3); lwz r31,4(r11)
   const u32 slot = gload32(gload32(table + 128, base) + 4, base);
-  ctx.fpscr.disableFlushMode();         // fmr f31,f1: protect the delta argument
+  ctx.fpscr.DisableFlushMode();         // fmr f31,f1: protect the delta argument
   ctx.f31.f64 = ctx.f1.f64;
   ctx.r29.u64 = ctx.r5.u64;             // mr r29,r5: protect the frame argument
   ctx.r31.u64 = slot;                   // r31 is callee-saved; guest callees see it
 
   // "Callback registered" gate: lwz r10,8(r31); cmplwi cr6,r10,0; beq -> epilogue.
   const u32 gate = gload32(slot + 8, base);
-  ctx.cr6.compare<u32>(gate, 0, ctx.xer);
+  ctx.cr6.Compare<u32>(gate, 0, ctx.xer);
   if (gate != 0) {
     // lis r30,-31927; global hook pointer lives at 0x83490000+0x6918 = 0x83496918.
     ctx.r30.s64 = -2092367872;          // lis r30,-31927 (0x83490000, as sign-extended by the recompiler)
     const u32 hook = gload32(0x83496918, base);  // lwz r11,26904(r30)
-    ctx.cr6.compare<u32>(hook, 0, ctx.xer);      // cmplwi cr6,r11,0
+    ctx.cr6.Compare<u32>(hook, 0, ctx.xer);      // cmplwi cr6,r11,0
     if (hook != 0) {
       const u32 node = gload32(slot + 4, base);  // lwz r11,4(r31)
       const u32 entry = gload32(node + 4, base); // lwz r10,4(r11)
-      ctx.cr6.compare<u32>(entry, node, ctx.xer);  // cmplw cr6,r10,r11
+      ctx.cr6.Compare<u32>(entry, node, ctx.xer);  // cmplw cr6,r10,r11
       if (entry == node) {
         // Corruption check: `entry` must not be `node` itself. The recompiler
         // models twi as a non-fatal log and falls through, so we do the same
@@ -148,7 +148,7 @@ extern "C" void DispatchFrameCallback_821A6010(PPCContext& __restrict ctx, uint8
     // may have mutated it), then dispatch target->vtable[7](target, frame, delta).
     const u32 node = gload32(slot + 4, base);   // lwz r11,4(r31)
     const u32 entry = gload32(node + 4, base);  // lwz r10,4(r11)
-    ctx.cr6.compare<u32>(entry, node, ctx.xer); // cmplw cr6,r10,r11
+    ctx.cr6.Compare<u32>(entry, node, ctx.xer); // cmplw cr6,r10,r11
     if (entry == node) {
       // Corruption check (twi 31,r0,22 x2, as recompiled).
       ppc_trap(ctx, base, 22);
@@ -156,7 +156,7 @@ extern "C" void DispatchFrameCallback_821A6010(PPCContext& __restrict ctx, uint8
     }
     const u32 target = gload32(entry + 8, base); // lwz r3,8(r10)
     ctx.r5.u64 = ctx.r29.u64;                    // mr r5,r29: restore frame argument
-    ctx.fpscr.disableFlushMode();                // fmr f1,f31: restore delta argument
+    ctx.fpscr.DisableFlushMode();                // fmr f1,f31: restore delta argument
     ctx.f1.f64 = ctx.f31.f64;
     vcall(ctx, base, target, 28, 0x821A60B8);    // target->vtable[7](target); ret 0x821A60B8
   }
@@ -164,7 +164,7 @@ extern "C" void DispatchFrameCallback_821A6010(PPCContext& __restrict ctx, uint8
   // --- Guest epilogue: addi r1,r1,128; lfd f31,-40(r1); b 0x82ca2c3c
   //     (restore r29-r31 + lr from the entry SP, then blr) ---
   ctx.r1.u32 = entry_sp;                 // addi r1,r1,128
-  ctx.fpscr.disableFlushMode();          // lfd f31,-40(r1)
+  ctx.fpscr.DisableFlushMode();          // lfd f31,-40(r1)
   ctx.f31.u64 = gload64(entry_sp - 40, base);
   __restgprlr_29(ctx, base);             // b 0x82ca2c3c
 }
