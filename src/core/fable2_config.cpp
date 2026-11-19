@@ -20,8 +20,8 @@
 #include <iterator>
 #include <string_view>
 
-#include <rex/logging/macros.h>
-#include <rex/system.h>
+#include <rex/logging/log_category.h>
+#include <rex/platform/process.h>
 
 #include <toml++/toml.hpp>
 
@@ -463,7 +463,7 @@ bool Load(const std::filesystem::path& path) {
         "The game will continue with built-in defaults. Fix the file (or "
         "delete it to recreate the defaults) and start again.",
         err.description(), path.string());
-    rex::ShowSimpleMessageBox(rex::SimpleMessageBoxType::Error, msg);
+    rex::ShowMessageBox(rex::MessageType::kError, msg);
     return false;
   }
 

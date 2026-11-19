@@ -49,7 +49,7 @@ file(GLOB_RECURSE HOTFUNC_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/
 
 option(FABLE2_SYNC_TRIAL_MINIMAL "Sync trial: build only the minimal TitleApp and hook stubs" ON)
 if(FABLE2_SYNC_TRIAL_MINIMAL)
-    set(FABLE2_SOURCES src/sync_trial/main.cpp src/sync_trial/hook_stubs.cpp)
+    set(FABLE2_SOURCES src/sync_trial/main.cpp src/sync_trial/hook_stubs.cpp src/core/fable2_config.cpp)
 else()
 set(FABLE2_SOURCES
     src/main.cpp
